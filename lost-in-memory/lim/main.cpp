@@ -22,7 +22,6 @@ int main()
     {
         time += Onyx::GetDeltaTime(win).AsSeconds();
         ctx->Flush();
-        ctx->Text("This wont work");
 
         Onyx::Transfer();
         Onyx::Render();
