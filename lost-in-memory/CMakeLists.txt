@@ -32,6 +32,8 @@ FetchContent_Declare(
   GIT_PROGRESS TRUE ${ONYX_PATCH_STEPS})
 FetchContent_MakeAvailable(onyx)
 
+add_subdirectory(platform)
+
 if(WIN32)
   target_compile_definitions(onyx PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
@@ -47,4 +49,4 @@ embed_assets(
   NAMESPACE Lim::Embedded
   OUTPUT_HEADER lim/embedded_assets.hpp
   FILES assets/fonts/FiraCodeNerdFontMono-Regular.ttf)
-target_link_libraries(lost-in-memory PRIVATE onyx)
+target_link_libraries(lost-in-memory PRIVATE onyx platform)

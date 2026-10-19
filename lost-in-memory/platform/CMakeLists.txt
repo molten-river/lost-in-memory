@@ -1,0 +1,15 @@
+cmake_minimum_required(VERSION 3.21)
+project(platform)
+
+if(WIN32)
+  set(SYSCALLS_SOURCE syscalls/syscalls_windows.cpp)
+else()
+  set(SYSCALLS_SOURCE syscalls/syscalls_linux.cpp)
+endif()
+
+add_library(platform STATIC ${SYSCALLS_SOURCE})
+target_include_directories(platform PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+target_compile_features(platform PUBLIC cxx_std_20)
+target_link_libraries(platform PUBLIC toolkit)
+target_compile_options(platform PRIVATE -Wall -Wextra -Wpedantic)
+tkit_configure_compile_link_options(platform NO_EXCEPTIONS NO_RTTI)
