@@ -29,12 +29,12 @@ class SandboxScreen
 
   private:
     [[nodiscard]] Action DrawPanel(LevelParams &params, bool won, u64 address, f32 opacity);
-    void ApplyTheme(f32 textSize, f32 screenHeight, f32 alpha);
+    void ApplyTheme(const LookFeelParams &lookFeel, f32 screenHeight, f32 alpha);
 
     Onyx::Resource m_Font;
     Onyx::Overlay *m_Overlay;
-    Onyx::OverlayColors m_Colors;
     Onyx::OverlayStyleVariables m_Variables;
+    const LevelParams m_Defaults{};
     TKit::Optional<f32v2> m_Size{};
 };
 } // namespace Lim
