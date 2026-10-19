@@ -11,7 +11,8 @@ set(SOURCES
     lim/region.cpp
     lim/shell.cpp
     lim/blob.cpp
-    lim/player.cpp)
+    lim/player.cpp
+    lim/level.cpp)
 
 include(FetchContent)
 
