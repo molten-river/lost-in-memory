@@ -70,3 +70,6 @@ Testing/
 
 # Agent configuration
 .claude/
+
+# Archives
+*.zip
