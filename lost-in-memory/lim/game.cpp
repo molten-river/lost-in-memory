@@ -1,7 +1,5 @@
 #include "lim/game.hpp"
 
-#include "lim/palette.hpp"
-
 #include "onyx/onyx.hpp"
 #include "onyx/platform.hpp"
 
@@ -21,7 +19,6 @@ constexpr Onyx::WindowFlags BORDERLESS_FLAGS = Onyx::WindowFlag_Visible | Onyx::
                                                Onyx::WindowFlag_FocusOnShow | Onyx::WindowFlag_InstallCallbacks;
 
 constexpr f32 CAMERA_FAR = 250.f;
-constexpr f32 FADE_SECONDS = 0.5f;
 constexpr f32 MAX_FRAME_SECONDS = 0.1f;
 constexpr u32 CAPTURE_ATTEMPTS = 3;
 
@@ -45,12 +42,10 @@ constexpr u32 CAPTURE_ATTEMPTS = 3;
 Game::Game()
     : m_Window(Onyx::OpenWindow({.Window = MakeWindowSpecs()})),
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
-      m_Context(Onyx::CreateRenderContext<D3>()), m_Params(LoadLevelParams()), m_Sandbox(*m_Window, m_Fonts),
+      m_Context(Onyx::CreateRenderContext<D3>()), m_Params(Sanitize(LoadLevelParams())), m_Sandbox(*m_Window, m_Fonts),
       m_Player(*m_Window)
 {
     m_Camera.PerspParameters.Far = CAMERA_FAR;
-    m_Window->ClearColor = VOID_BLACK;
-    m_View->ClearColor = VOID_BLACK;
     m_Context->AddTarget(m_View);
 }
 
@@ -89,6 +84,9 @@ void Game::Run()
 
 void Game::Restart()
 {
+    m_Window->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
+    m_View->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
+    m_Player.Configure(m_Params.LookFeel.Player);
     m_Level.Generate(*m_Region, m_Params);
     m_Player.Reset();
     m_Player.SetCursorLocked(true);
@@ -97,6 +95,7 @@ void Game::Restart()
 
 void Game::Rebuild(const SandboxScreen::Action action)
 {
+    m_Params = Sanitize(m_Params);
     if (!SaveLevelParams(m_Params))
         TKIT_LOG_ERROR("[LIM][GAME] Could not save the level params to defaults.yaml");
 
@@ -115,13 +114,14 @@ void Game::Rebuild(const SandboxScreen::Action action)
 Game::Fade Game::Step(const f32 deltaTime)
 {
     m_StateSeconds += deltaTime;
-    const f32 linear = TKit::Math::Min(m_StateSeconds / FADE_SECONDS, 1.f);
+    const f32 fadeSeconds = m_Params.LookFeel.FadeSeconds;
+    const f32 linear = TKit::Math::Min(m_StateSeconds / fadeSeconds, 1.f);
     const f32 progress = linear * linear * (3.f - 2.f * linear);
 
     switch (m_State)
     {
     case State::FadingIn:
-        if (m_StateSeconds >= FADE_SECONDS)
+        if (m_StateSeconds >= fadeSeconds)
             Enter(State::Playing);
         return Fade{.Brightness = progress, .Opacity = 0.f};
     case State::Playing:
@@ -131,7 +131,7 @@ Game::Fade Game::Step(const f32 deltaTime)
             Enter(State::FadingOut);
         return Fade{.Brightness = 1.f, .Opacity = 0.f};
     case State::FadingOut:
-        if (m_StateSeconds < FADE_SECONDS)
+        if (m_StateSeconds < fadeSeconds)
             return Fade{.Brightness = 1.f - progress, .Opacity = 0.f};
         m_Player.SetCursorLocked(false);
         Enter(State::Sandbox);

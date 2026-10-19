@@ -1,9 +1,15 @@
 #include "lim/level_params.hpp"
 
 #include "tkit/container/fixed_array.hpp"
+#include "tkit/container/static_array.hpp"
 #include "tkit/container/tier_array.hpp"
 #include "tkit/math/math.hpp"
+#include "tkit/reflection/lim/form_params.hpp"
 #include "tkit/reflection/lim/level_params.hpp"
+#include "tkit/reflection/lim/palette.hpp"
+#include "tkit/reflection/lim/player_params.hpp"
+#include "tkit/reflection/lim/shape_params.hpp"
+#include "tkit/reflection/lim/shell_params.hpp"
 #include "tkit/utils/logging.hpp"
 
 #include <charconv>
@@ -11,6 +17,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <type_traits>
 
 namespace Lim
 {
@@ -25,6 +32,8 @@ enum class AssignResult : u8
 
 constexpr usize INDENT_WIDTH = 2;
 constexpr usize NUMBER_BUFFER_SIZE = 32;
+constexpr usize MAX_NESTING_DEPTH = 4;
+constexpr usize COLOR_HEX_DIGITS = 6;
 constexpr char COMMENT_MARKER = '#';
 constexpr char KEY_VALUE_SEPARATOR = ':';
 constexpr char LINE_BREAK = '\n';
@@ -37,6 +46,18 @@ template <typename Number> void AppendNumber(TKit::TierString &out, const Number
         std::to_chars(buffer.GetData(), buffer.GetData() + NUMBER_BUFFER_SIZE - 1, number);
     *result.ptr = 0;
     out += buffer.GetData();
+}
+
+void AppendBool(TKit::TierString &out, const bool value)
+{
+    out += value ? "true" : "false";
+}
+
+void AppendColor(TKit::TierString &out, const Onyx::Color &color)
+{
+    const TKit::StaticString8 hex = color.ToHexadecimal<TKit::StaticString8>(false);
+    out += '#';
+    out += hex.CString();
 }
 
 template <typename Params> void AppendFields(TKit::TierString &out, const Params &params, const usize depth)
@@ -55,7 +76,12 @@ template <typename Params> void AppendFields(TKit::TierString &out, const Params
         else
         {
             out += ' ';
-            AppendNumber(out, field.Get(params));
+            if constexpr (std::is_same_v<Type, bool>)
+                AppendBool(out, field.Get(params));
+            else if constexpr (std::is_same_v<Type, Onyx::Color>)
+                AppendColor(out, field.Get(params));
+            else
+                AppendNumber(out, field.Get(params));
             out += LINE_BREAK;
         }
     });
@@ -75,25 +101,68 @@ template <typename Number> bool ParseNumber(Number &target, const TKit::StringVi
     return true;
 }
 
+[[nodiscard]] bool ParseBool(bool &target, const TKit::StringView text)
+{
+    if (text == "true")
+    {
+        target = true;
+        return true;
+    }
+    if (text == "false")
+    {
+        target = false;
+        return true;
+    }
+    return false;
+}
+
+[[nodiscard]] bool IsHexDigit(const char c)
+{
+    return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
+
+[[nodiscard]] bool ParseColor(Onyx::Color &target, const TKit::StringView text)
+{
+    if (text.GetSize() != COLOR_HEX_DIGITS + 1 || text.GetFront() != '#')
+        return false;
+    const TKit::StringView digits = text.SubString(1);
+    for (const char c : digits)
+        if (!IsHexDigit(c))
+            return false;
+    target = Onyx::Color::FromHexadecimal(digits);
+    return true;
+}
+
 template <typename Params>
-AssignResult Assign(Params &params, const TKit::StringView section, const TKit::StringView key,
-                    const TKit::StringView text)
+AssignResult AssignPath(Params &params, const TKit::Span<const TKit::StringView> path, const TKit::StringView text)
 {
     AssignResult outcome = AssignResult::Unknown;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
+        if (path.GetFront() != field.Name)
+            return;
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if constexpr (TKit::Reflect<Type>::Implemented)
         {
-            if (section == field.Name)
-                outcome = Assign(field.Get(params), TKit::StringView{}, key, text);
+            if (path.GetSize() > 1)
+                outcome = AssignPath(field.Get(params),
+                                     TKit::Span<const TKit::StringView>(path.GetData() + 1, path.GetSize() - 1), text);
         }
-        else if (section.IsEmpty() && key == field.Name)
-            outcome = ParseNumber(field.Get(params), text) ? AssignResult::Assigned : AssignResult::Invalid;
+        else if (path.GetSize() == 1)
+        {
+            if constexpr (std::is_same_v<Type, bool>)
+                outcome = ParseBool(field.Get(params), text) ? AssignResult::Assigned : AssignResult::Invalid;
+            else if constexpr (std::is_same_v<Type, Onyx::Color>)
+                outcome = ParseColor(field.Get(params), text) ? AssignResult::Assigned : AssignResult::Invalid;
+            else
+                outcome = ParseNumber(field.Get(params), text) ? AssignResult::Assigned : AssignResult::Invalid;
+        }
     });
     return outcome;
 }
 
-void ApplyLine(LevelParams &params, TKit::StringView &section, const TKit::StringView line)
+/// Tracks the enclosing section name at each indentation depth, as set by the last header line seen at that depth.
+void ApplyLine(LevelParams &params, TKit::FixedArray<TKit::StringView, MAX_NESTING_DEPTH> &sections,
+               const TKit::StringView line)
 {
     const TKit::StringView content = line.Trim();
     if (content.IsEmpty() || content.GetFront() == COMMENT_MARKER)
@@ -113,14 +182,27 @@ void ApplyLine(LevelParams &params, TKit::StringView &section, const TKit::Strin
         TKIT_LOG_WARNING("[LIM][LEVEL_PARAMS] Ignoring line without a key: '{}'", content);
         return;
     }
-    if (text.IsEmpty())
+
+    const usize indent = line.FindFirstNotOf(" ");
+    const usize depth = indent == TKit::StringView::npos ? 0 : indent / INDENT_WIDTH;
+    if (depth >= MAX_NESTING_DEPTH)
     {
-        section = key;
+        TKIT_LOG_WARNING("[LIM][LEVEL_PARAMS] Ignoring line nested too deeply: '{}'", content);
         return;
     }
 
-    const bool nested = line.FindFirstNotOf(" ") != 0;
-    const AssignResult result = Assign(params, nested ? section : TKit::StringView{}, key, text);
+    if (text.IsEmpty())
+    {
+        sections[depth] = key;
+        return;
+    }
+
+    TKit::FixedArray<TKit::StringView, MAX_NESTING_DEPTH> path{};
+    for (usize i = 0; i < depth; ++i)
+        path[i] = sections[i];
+    path[depth] = key;
+
+    const AssignResult result = AssignPath(params, TKit::Span<const TKit::StringView>(path.GetData(), depth + 1), text);
     if (result == AssignResult::Invalid)
     {
         TKIT_LOG_WARNING("[LIM][LEVEL_PARAMS] Ignoring invalid value for '{}': '{}'", key, text);
@@ -133,15 +215,45 @@ void ApplyLine(LevelParams &params, TKit::StringView &section, const TKit::Strin
 
 void Decode(LevelParams &params, const TKit::StringView text)
 {
-    TKit::StringView section{};
+    TKit::FixedArray<TKit::StringView, MAX_NESTING_DEPTH> sections{};
     for (usize start = 0; start < text.GetSize();)
     {
         const usize end = TKit::Math::Min(text.Find(LINE_BREAK, start), text.GetSize());
-        ApplyLine(params, section, text.SubString(start, end - start));
+        ApplyLine(params, sections, text.SubString(start, end - start));
         start = end + 1;
     }
 }
 } // namespace
+
+LightParams Sanitize(LightParams params)
+{
+    params.AmbientIntensity = TKit::Math::Max(params.AmbientIntensity, 0.f);
+    params.CoreIntensity = TKit::Math::Max(params.CoreIntensity, 0.f);
+    params.CoreRadiusScale = TKit::Math::Max(params.CoreRadiusScale, 0.01f);
+    return params;
+}
+
+LookFeelParams Sanitize(LookFeelParams params)
+{
+    params.ShellMotion = Sanitize(params.ShellMotion);
+    params.Shapes = Sanitize(params.Shapes);
+    params.Player = Sanitize(params.Player);
+    params.Light = Sanitize(params.Light);
+    params.FadeSeconds = TKit::Math::Max(params.FadeSeconds, 0.01f);
+    params.TextSize = TKit::Math::Max(params.TextSize, 1.f);
+    return params;
+}
+
+MechanicsParams Sanitize(MechanicsParams params)
+{
+    params.Shell = Sanitize(params.Shell);
+    params.Shapes = Sanitize(params.Shapes);
+    params.Enemies = Sanitize(params.Enemies);
+    params.Solids = Sanitize(params.Solids);
+    params.Goal = Sanitize(params.Goal);
+    params.Physics = Sanitize(params.Physics);
+    return params;
+}
 
 LevelParams LoadLevelParams()
 {
@@ -178,5 +290,12 @@ bool SaveLevelParams(const LevelParams &params)
     }
     std::filesystem::rename(temp, path, error);
     return !error;
+}
+
+LevelParams Sanitize(LevelParams params)
+{
+    params.LookFeel = Sanitize(params.LookFeel);
+    params.Mechanics = Sanitize(params.Mechanics);
+    return params;
 }
 } // namespace Lim

@@ -1,25 +1,34 @@
 #pragma once
 
 #include "lim/alias.hpp"
+
 #include "onyx/color.hpp"
+
 #include "tkit/math/math.hpp"
+#include "tkit/reflection/reflect.hpp"
 
 namespace Lim
 {
-inline const Onyx::Color VOID_BLACK = Onyx::Color::FromHexadecimal(0x000000, false);
-inline const Onyx::Color UNTINTED = Onyx::Color::FromHexadecimal(0xFFFFFF, false);
-inline const Onyx::Color SHELL_TROUGH = Onyx::Color::FromHexadecimal(0x23272D, false);
-inline const Onyx::Color SHELL_CREST = Onyx::Color::FromHexadecimal(0x9AA3AE, false);
-inline const Onyx::Color ENEMY_PURPLE = Onyx::Color::FromHexadecimal(0x7B2FE0, false);
-inline const Onyx::Color ENEMY_RED = Onyx::Color::FromHexadecimal(0xE3242B, false);
-inline const Onyx::Color GOAL_GREEN = Onyx::Color::FromHexadecimal(0x9CF5A8, false);
-inline const Onyx::Color CORE_LIGHT = Onyx::Color::FromHexadecimal(0xDCE6F2, false);
-inline const Onyx::Color AMBIENT = Onyx::Color::FromHexadecimal(0x2A3038, false);
-inline const Onyx::Color UI_BACKGROUND = Onyx::Color::FromHexadecimal(0x0C0E11, false);
-inline const Onyx::Color UI_SURFACE = Onyx::Color::FromHexadecimal(0x1B1F24, false);
-inline const Onyx::Color UI_BORDER = Onyx::Color::FromHexadecimal(0x3B4149, false);
-inline const Onyx::Color UI_TEXT = Onyx::Color::FromHexadecimal(0xD9DEE4, false);
-inline const Onyx::Color UI_TEXT_DIM = Onyx::Color::FromHexadecimal(0x7E868F, false);
+struct Palette
+{
+    TKIT_REFLECT_DECLARE(Palette)
+    Onyx::Color VoidBlack = Onyx::Color::FromHexadecimal(0x000000, false);
+    Onyx::Color Untinted = Onyx::Color::FromHexadecimal(0xFFFFFF, false);
+    Onyx::Color ShellTrough = Onyx::Color::FromHexadecimal(0x23272D, false);
+    Onyx::Color ShellCrest = Onyx::Color::FromHexadecimal(0x9AA3AE, false);
+    Onyx::Color EnemyPurple = Onyx::Color::FromHexadecimal(0x7B2FE0, false);
+    Onyx::Color EnemyRed = Onyx::Color::FromHexadecimal(0xE3242B, false);
+    Onyx::Color GoalGreen = Onyx::Color::FromHexadecimal(0x9CF5A8, false);
+    Onyx::Color SolidLow = Onyx::Color::FromHexadecimal(0x4E535A, false);
+    Onyx::Color SolidHigh = Onyx::Color::FromHexadecimal(0x8A8F96, false);
+    Onyx::Color CoreLight = Onyx::Color::FromHexadecimal(0xDCE6F2, false);
+    Onyx::Color Ambient = Onyx::Color::FromHexadecimal(0x2A3038, false);
+    Onyx::Color UiBackground = Onyx::Color::FromHexadecimal(0x0C0E11, false);
+    Onyx::Color UiSurface = Onyx::Color::FromHexadecimal(0x1B1F24, false);
+    Onyx::Color UiBorder = Onyx::Color::FromHexadecimal(0x3B4149, false);
+    Onyx::Color UiText = Onyx::Color::FromHexadecimal(0xD9DEE4, false);
+    Onyx::Color UiTextDim = Onyx::Color::FromHexadecimal(0x7E868F, false);
+};
 
 [[nodiscard]] inline Onyx::Color Mix(const Onyx::Color &from, const Onyx::Color &to, const f32 t)
 {

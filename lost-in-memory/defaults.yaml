@@ -1,24 +1,118 @@
-Shell:
-  Radius: 30
-  Subdivisions: 4
-  WaveAmplitude: 1.2
-  WaveSpeed: 0.6
-  WaveFrequency: 3
-  LethalDensity: 0.06
-Enemies:
-  MinCount: 6
-  MaxCount: 12
-  MinSize: 1.2
-  MaxSize: 3
-  MinPrimitives: 2
-  MaxPrimitives: 5
-  BlendRadius: 0.6
-  MinDriftSpeed: 1
-  MaxDriftSpeed: 5
-  TumbleSpeed: 0.4
-Goal:
-  ShellChance: 0.3
-  Size: 1.5
-  DriftSpeed: 1.5
-  MinSpawnDistance: 15
-TextSize: 16
+LookFeel:
+  Colors:
+    VoidBlack: #000000
+    Untinted: #FFFFFF
+    ShellTrough: #23272D
+    ShellCrest: #9AA3AE
+    EnemyPurple: #7B2FE0
+    EnemyRed: #E3242B
+    GoalGreen: #9CF5A8
+    SolidLow: #4E535A
+    SolidHigh: #8A8F96
+    CoreLight: #DCE6F2
+    Ambient: #2A3038
+    UiBackground: #0C0E11
+    UiSurface: #1B1F24
+    UiBorder: #3B4149
+    UiText: #D9DEE4
+    UiTextDim: #7E868F
+  ShellMotion:
+    WaveAmplitude: 1.2
+    WaveSpeed: 0.6
+    WaveFrequency: 3
+    NoiseAmplitude: 2.5
+    NoiseSpeed: 0.3
+    NoiseScale: 2.5
+    TangentialShare: 0.35
+    FacetTintStrength: 2
+  Shapes:
+    MeshResolution: 24
+  Player:
+    Radius: 0.5
+    Thrust: 40
+    MaxSpeed: 12
+    VelocityKeptPerSecond: 0.05
+    MouseRadiansPerPixel: 0.0025
+    RollSpeed: 2
+  Light:
+    AmbientIntensity: 1
+    CoreIntensity: 5
+    CoreRadiusScale: 1
+  FadeSeconds: 0.5
+  TextSize: 16
+Mechanics:
+  Shell:
+    Radius: 30
+    Subdivisions: 4
+    LethalDensity: 0.06
+  Shapes:
+    CarveChance: 0.45
+    OpeningMargin: 1.5
+    HardBlendScale: 0.15
+    TrimChance: 0.35
+    MonolithWeight: 3
+    PortalWeight: 2
+    RingWeight: 1.5
+    CageWeight: 1
+    GateWeight: 1.5
+    WallFraction: 0.22
+    MinSpanFraction: 0.7
+    MaxSpanFraction: 1.1
+    MinDepthFraction: 0.25
+    MaxDepthFraction: 0.5
+    MinWindowFraction: 0.3
+    MaxWindowFraction: 0.6
+    AttachmentReach: 0.6
+    NotchFraction: 0.4
+    GrooveDepthFraction: 0.35
+    SmoothSpread: 0.8
+    SmoothSphereRadius: 0.8
+    SmoothBoxHalfWidth: 0.7
+    SmoothBoxHalfHeight: 0.5
+    SmoothBoxHalfDepth: 0.35
+    SmoothCapsuleRadius: 0.4
+    SmoothCapsuleHalfLength: 0.8
+    SmoothTorusMajorRadius: 0.8
+    SmoothTorusMinorRadius: 0.3
+  Enemies:
+    MinCount: 6
+    MaxCount: 12
+    MinSize: 1.2
+    MaxSize: 3
+    MinPrimitives: 2
+    MaxPrimitives: 5
+    BlendRadius: 0.6
+    MinDriftSpeed: 1
+    MaxDriftSpeed: 5
+    TumbleSpeed: 0.4
+  Solids:
+    MinCount: 3
+    MaxCount: 7
+    MinSize: 2
+    MaxSize: 4
+    MinPrimitives: 2
+    MaxPrimitives: 4
+    BlendRadius: 0.2
+    MinDriftSpeed: 0.3
+    MaxDriftSpeed: 1.5
+    TumbleSpeed: 0.15
+  Goal:
+    ShellChance: 0.3
+    Size: 1.5
+    DriftSpeed: 1.5
+    MinSpawnDistance: 15
+    MinPrimitives: 1
+    MaxPrimitives: 3
+  Physics:
+    Restitution: 1
+    Density: 1
+    AngularDamping: 0
+    Substeps: 2
+    WallMargin: 0.5
+    MinTumbleScale: 0.5
+    MaxTumbleScale: 1.5
+    MinSafeSpawnRadius: 8
+    SafeSpawnFraction: 0.3
+Flags:
+  ShellVertexNoise: true
+  CarvedShapes: true
