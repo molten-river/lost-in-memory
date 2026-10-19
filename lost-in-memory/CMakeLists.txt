@@ -13,7 +13,8 @@ set(SOURCES
     lim/blob.cpp
     lim/player.cpp
     lim/level.cpp
-    lim/sandbox_screen.cpp)
+    lim/sandbox_screen.cpp
+    lim/game.cpp)
 
 include(FetchContent)
 
