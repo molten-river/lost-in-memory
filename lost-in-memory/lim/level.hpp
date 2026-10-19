@@ -1,29 +1,31 @@
 #pragma once
 
 #include "lim/alias.hpp"
-#include "lim/blob.hpp"
+#include "lim/body.hpp"
 #include "lim/byte_reader.hpp"
+#include "lim/form_params.hpp"
 #include "lim/level_params.hpp"
+#include "lim/palette.hpp"
 #include "lim/player.hpp"
 #include "lim/region.hpp"
+#include "lim/shape_grammar.hpp"
 #include "lim/shell.hpp"
 
 #include "onyx/color.hpp"
 #include "onyx/context.hpp"
 #include "onyx/handle.hpp"
-#include "tkit/container/span.hpp"
 #include "tkit/container/static_array.hpp"
-#include "tkit/math/quaternion.hpp"
 #include "tkit/math/tensor.hpp"
 
 namespace Lim
 {
-/// A level decoded from a memory region: a pulsing shell, drifting enemy blobs and a goal, with one-hit death rules.
+/// A level decoded from a memory region: a moving shell and rigid forms (enemies, solids, a goal) with one-hit death.
 class Level
 {
   public:
     static constexpr u32 MAX_ENEMIES = 30;
-    static constexpr u32 MAX_FORMS = MAX_ENEMIES + 1;
+    static constexpr u32 MAX_SOLIDS = 12;
+    static constexpr u32 MAX_FORMS = MAX_ENEMIES + MAX_SOLIDS + 1;
 
     enum class Outcome : u8
     {
@@ -32,6 +34,7 @@ class Level
         Died
     };
 
+    /// Creates the one static-mesh pool, never recreated because Onyx reuses pool ids.
     Level();
 
     Level(const Level &) = delete;
@@ -47,59 +50,50 @@ class Level
     enum class FormKind : u8
     {
         Enemy,
+        Solid,
         Goal
-    };
-
-    enum class DriftMode : u8
-    {
-        Bounce,
-        Orbit
     };
 
     struct Form
     {
-        [[nodiscard]] bool IsTouching(const f32v3 &point) const;
-
-        Blob Body;
+        Body RigidBody;
         Onyx::Color Tint;
         FormKind Kind;
-        DriftMode Mode;
-        f32v3 Position;
-        f32v3 Velocity{0.f};
-        f32v3 OrbitAxis{0.f, 1.f, 0.f};
-        f32 OrbitRate = 0.f;
-        f32q Orientation;
-        f32v3 TumbleAxis;
-        f32 TumbleRate;
     };
 
     struct FormSpec
     {
         FormKind Kind;
         Onyx::Color Tint;
-        f32 BlendRadius;
+        ShapeRequest Shape;
         f32 MinDistance;
         f32 MinDriftSpeed;
         f32 MaxDriftSpeed;
         f32 TumbleSpeed;
     };
 
-    void DecodeLethalPanels(ByteReader &reader, f32 density);
+    void DecodeLethalPanels(ByteReader &reader, f32 density, const Palette &colors);
     void DecodeGoal(ByteReader &reader, const LevelParams &params);
-    void DecodeEnemies(ByteReader &reader, const LevelParams &params);
-    void SpawnForm(ByteReader &reader, const FormSpec &spec, TKit::Span<const BlobPrimitive> primitives);
+    template <typename CrowdParams>
+    void DecodeCrowd(ByteReader &reader, FormKind kind, const CrowdParams &crowd, const Onyx::Color &low,
+                     const Onyx::Color &high, const LevelParams &params);
+    void SpawnForm(ByteReader &reader, const FormSpec &spec, const LevelParams &params);
+    [[nodiscard]] bool IsCrowded(const f32v3 &position, f32 radius) const;
 
-    void Advance(Form &form, f32 deltaTime) const;
-    [[nodiscard]] Outcome DetectOutcome(const f32v3 &position) const;
+    void Simulate(f32 deltaTime);
+    [[nodiscard]] Outcome DetectOutcome(const f32v3 &position, f32 radius) const;
 
     Shell m_Shell;
     Onyx::Resource m_Material;
-    Onyx::ResourcePool m_Pool;
+    const Onyx::ResourcePool m_Pool;
     TKit::StaticArray<Form, MAX_FORMS> m_Forms{};
 
-    f32 m_Time = 0.f;
+    PhysicsParams m_Physics{};
+    LightParams m_Light{};
+    Onyx::Color m_AmbientTint = Palette{}.Ambient;
+    Onyx::Color m_CoreTint = Palette{}.CoreLight;
     f32 m_LightRadius = ShellParams{}.Radius;
-    f32 m_LowestShellRadius = ShellParams{}.Radius;
+    f32 m_Time = 0.f;
     Outcome m_Outcome = Outcome::Playing;
 };
 } // namespace Lim

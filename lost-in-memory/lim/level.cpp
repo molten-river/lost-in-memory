@@ -1,11 +1,8 @@
 #include "lim/level.hpp"
 
-#include "lim/palette.hpp"
-
 #include "onyx/resources.hpp"
-#include "onyx/transform.hpp"
-#include "tkit/container/fixed_array.hpp"
 #include "tkit/math/math.hpp"
+#include "tkit/utils/optional.hpp"
 #include <utility>
 
 namespace Lim
@@ -14,34 +11,36 @@ using Onyx::D3;
 
 namespace
 {
-constexpr u32 MAX_SUBDIVISIONS = 5;
-constexpr f32 MIN_SHELL_RADIUS = 4.f;
 constexpr f32 MAX_WAVE_AMPLITUDE_FRACTION = 0.4f;
-constexpr f32 MIN_BLOB_SIZE = 0.1f;
-constexpr f32 MAX_BLOB_SIZE_FRACTION = 0.25f;
-
-constexpr u32 GOAL_MIN_PRIMITIVES = 1;
-constexpr u32 GOAL_MAX_PRIMITIVES = 3;
-static_assert(GOAL_MAX_PRIMITIVES <= Blob::MAX_PRIMITIVES);
-constexpr f32 MIN_SAFE_SPAWN_RADIUS = 8.f;
-constexpr f32 SAFE_SPAWN_FRACTION = 0.3f;
-constexpr f32 EDGE_MARGIN = 0.5f;
-constexpr f32 CENTER_SPREAD = 0.8f;
-
-constexpr f32 ORBIT_CHANCE = 0.5f;
-constexpr f32 MIN_ORBIT_RADIUS = 1.f;
-constexpr f32 MIN_AXIS_LENGTH = 1e-3f;
-constexpr f32 MIN_TUMBLE_SCALE = 0.5f;
-constexpr f32 MAX_TUMBLE_SCALE = 1.5f;
-
+constexpr f32 MAX_FORM_SIZE_FRACTION = 0.25f;
+constexpr f32 MIN_FORM_SIZE = 0.1f;
+constexpr f32 MIN_DENSITY = 1e-3f;
+constexpr u32 MAX_SUBSTEPS = 8;
+constexpr u32 MAX_SPAWN_ATTEMPTS = 8;
 constexpr f32 SHELL_CONTACT_EPSILON = 0.05f;
-constexpr f32 AMBIENT_INTENSITY = 1.f;
-constexpr f32 LIGHT_INTENSITY = 5.f;
 
-constexpr TKit::FixedArray<f32v3, 4> SHAPE_EXTENT_PER_SIZE{f32v3{0.8f, 0.f, 0.f}, f32v3{0.7f, 0.5f, 0.35f},
-                                                           f32v3{0.4f, 0.8f, 0.f}, f32v3{0.8f, 0.3f, 0.f}};
+[[nodiscard]] LevelParams FitToShell(LevelParams params)
+{
+    const f32 radius = params.Mechanics.Shell.Radius;
+    const f32 maxAmplitude = MAX_WAVE_AMPLITUDE_FRACTION * radius;
+    ShellMotionParams &motion = params.LookFeel.ShellMotion;
+    motion.WaveAmplitude = TKit::Math::Min(motion.WaveAmplitude, maxAmplitude);
+    motion.NoiseAmplitude = TKit::Math::Min(motion.NoiseAmplitude, maxAmplitude);
 
-using PrimitiveArray = TKit::StaticArray<BlobPrimitive, Blob::MAX_PRIMITIVES>;
+    const f32 maxSize = MAX_FORM_SIZE_FRACTION * radius;
+    MechanicsParams &mechanics = params.Mechanics;
+    mechanics.Enemies.MinSize = TKit::Math::Min(mechanics.Enemies.MinSize, maxSize);
+    mechanics.Enemies.MaxSize = TKit::Math::Min(mechanics.Enemies.MaxSize, maxSize);
+    mechanics.Solids.MinSize = TKit::Math::Min(mechanics.Solids.MinSize, maxSize);
+    mechanics.Solids.MaxSize = TKit::Math::Min(mechanics.Solids.MaxSize, maxSize);
+    mechanics.Goal.Size = TKit::Math::Min(mechanics.Goal.Size, maxSize);
+    return params;
+}
+
+[[nodiscard]] f32 ComputeMinOpening(const LevelParams &params)
+{
+    return 2.f * params.LookFeel.Player.Radius * params.Mechanics.Shapes.OpeningMargin;
+}
 
 template <typename T> void OrderPair(T &first, T &second)
 {
@@ -51,62 +50,23 @@ template <typename T> void OrderPair(T &first, T &second)
     second = high;
 }
 
-[[nodiscard]] LevelParams Sanitize(LevelParams params)
+template <typename CrowdParams> [[nodiscard]] CrowdParams SanitizeCrowd(CrowdParams crowd, const u32 maxCount)
 {
-    ShellParams &shell = params.Shell;
-    shell.Radius = TKit::Math::Max(shell.Radius, MIN_SHELL_RADIUS);
-    shell.Subdivisions = TKit::Math::Min(shell.Subdivisions, MAX_SUBDIVISIONS);
-    shell.WaveAmplitude = TKit::Math::Clamp(shell.WaveAmplitude, 0.f, MAX_WAVE_AMPLITUDE_FRACTION * shell.Radius);
-    shell.LethalDensity = TKit::Math::Clamp(shell.LethalDensity, 0.f, 1.f);
-
-    EnemyParams &enemies = params.Enemies;
-    OrderPair(enemies.MinCount, enemies.MaxCount);
-    enemies.MaxCount = TKit::Math::Min(enemies.MaxCount, Level::MAX_ENEMIES);
-    enemies.MinCount = TKit::Math::Min(enemies.MinCount, enemies.MaxCount);
-    OrderPair(enemies.MinSize, enemies.MaxSize);
-    const f32 maxBlobSize = MAX_BLOB_SIZE_FRACTION * shell.Radius;
-    enemies.MinSize = TKit::Math::Clamp(enemies.MinSize, MIN_BLOB_SIZE, maxBlobSize);
-    enemies.MaxSize = TKit::Math::Clamp(enemies.MaxSize, MIN_BLOB_SIZE, maxBlobSize);
-    OrderPair(enemies.MinPrimitives, enemies.MaxPrimitives);
-    enemies.MinPrimitives = TKit::Math::Clamp(enemies.MinPrimitives, 1U, Blob::MAX_PRIMITIVES);
-    enemies.MaxPrimitives = TKit::Math::Clamp(enemies.MaxPrimitives, 1U, Blob::MAX_PRIMITIVES);
-    enemies.BlendRadius = TKit::Math::Max(enemies.BlendRadius, 0.f);
-    OrderPair(enemies.MinDriftSpeed, enemies.MaxDriftSpeed);
-    enemies.MinDriftSpeed = TKit::Math::Max(enemies.MinDriftSpeed, 0.f);
-    enemies.MaxDriftSpeed = TKit::Math::Max(enemies.MaxDriftSpeed, 0.f);
-    enemies.TumbleSpeed = TKit::Math::Max(enemies.TumbleSpeed, 0.f);
-
-    GoalParams &goal = params.Goal;
-    goal.Size = TKit::Math::Clamp(goal.Size, MIN_BLOB_SIZE, maxBlobSize);
-    goal.DriftSpeed = TKit::Math::Max(goal.DriftSpeed, 0.f);
-    goal.MinSpawnDistance = TKit::Math::Max(goal.MinSpawnDistance, 0.f);
-    return params;
-}
-
-[[nodiscard]] Onyx::Color DecodeHostileColor(ByteReader &reader)
-{
-    return Mix(ENEMY_PURPLE, ENEMY_RED, reader.NextUnit());
-}
-
-[[nodiscard]] BlobPrimitive DecodePrimitive(ByteReader &reader, const f32 minSize, const f32 maxSize)
-{
-    const f32 size = reader.NextRange(minSize, maxSize);
-    const u32 shape = reader.NextIndex(u32(SHAPE_EXTENT_PER_SIZE.GetSize()));
-    const f32 spread = reader.NextUnit() * CENTER_SPREAD * size;
-    const f32v3 offset = reader.NextDirection() * spread;
-    const f32q rotation = reader.NextRotation();
-    return BlobPrimitive{.Kind = BlobPrimitive::Shape(shape),
-                         .Center = offset,
-                         .Extent = SHAPE_EXTENT_PER_SIZE[shape] * size,
-                         .Rotation = rotation};
-}
-
-[[nodiscard]] PrimitiveArray DecodePrimitives(ByteReader &reader, const u32 count, const f32 minSize, const f32 maxSize)
-{
-    PrimitiveArray primitives{};
-    for (u32 i = 0; i < count; ++i)
-        primitives.Append(DecodePrimitive(reader, minSize, maxSize));
-    return primitives;
+    OrderPair(crowd.MinCount, crowd.MaxCount);
+    crowd.MaxCount = TKit::Math::Min(crowd.MaxCount, maxCount);
+    crowd.MinCount = TKit::Math::Min(crowd.MinCount, crowd.MaxCount);
+    OrderPair(crowd.MinSize, crowd.MaxSize);
+    crowd.MinSize = TKit::Math::Max(crowd.MinSize, MIN_FORM_SIZE);
+    crowd.MaxSize = TKit::Math::Max(crowd.MaxSize, MIN_FORM_SIZE);
+    OrderPair(crowd.MinPrimitives, crowd.MaxPrimitives);
+    crowd.MinPrimitives = TKit::Math::Clamp(crowd.MinPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    crowd.MaxPrimitives = TKit::Math::Clamp(crowd.MaxPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    crowd.BlendRadius = TKit::Math::Max(crowd.BlendRadius, 0.f);
+    OrderPair(crowd.MinDriftSpeed, crowd.MaxDriftSpeed);
+    crowd.MinDriftSpeed = TKit::Math::Max(crowd.MinDriftSpeed, 0.f);
+    crowd.MaxDriftSpeed = TKit::Math::Max(crowd.MaxDriftSpeed, 0.f);
+    crowd.TumbleSpeed = TKit::Math::Max(crowd.TumbleSpeed, 0.f);
+    return crowd;
 }
 } // namespace
 
@@ -119,23 +79,27 @@ Level::Level()
 
 void Level::Generate(const Region &region, const LevelParams &requested)
 {
-    const LevelParams params = Sanitize(requested);
+    const LevelParams params = FitToShell(Sanitize(requested));
+    const Palette &colors = params.LookFeel.Colors;
+    const ShellParams &shell = params.Mechanics.Shell;
 
     m_Forms.Clear();
     Onyx::Resources::Sync(Onyx::SyncFlag_StaticMeshes);
-    Onyx::Resources::DestroyResourcePool<D3>(m_Pool);
-    m_Pool = Onyx::Resources::CreateResourcePool<D3>(Onyx::Resource_StaticMesh);
 
     m_Time = 0.f;
     m_Outcome = Outcome::Playing;
-    m_LightRadius = params.Shell.Radius;
-    m_LowestShellRadius = params.Shell.Radius - params.Shell.WaveAmplitude;
+    m_Physics = params.Mechanics.Physics;
+    m_Light = params.LookFeel.Light;
+    m_AmbientTint = colors.Ambient;
+    m_CoreTint = colors.CoreLight;
+    m_LightRadius = shell.Radius * m_Light.CoreRadiusScale;
 
     ByteReader reader(region.GetBytes());
-    m_Shell.Build(params.Shell);
-    DecodeLethalPanels(reader, params.Shell.LethalDensity);
+    m_Shell.Build(shell, params.LookFeel.ShellMotion, colors, params.Flags.ShellVertexNoise);
+    DecodeLethalPanels(reader, shell.LethalDensity, colors);
     DecodeGoal(reader, params);
-    DecodeEnemies(reader, params);
+    DecodeCrowd(reader, FormKind::Enemy, params.Mechanics.Enemies, colors.EnemyPurple, colors.EnemyRed, params);
+    DecodeCrowd(reader, FormKind::Solid, params.Mechanics.Solids, colors.SolidLow, colors.SolidHigh, params);
 
     m_Shell.Update(m_Time);
     Onyx::Resources::Sync(Onyx::SyncFlag_StaticMeshes);
@@ -148,15 +112,24 @@ void Level::Update(const f32 deltaTime, Player &player)
 
     m_Time += deltaTime;
     m_Shell.Update(m_Time);
-    for (Form &form : m_Forms)
-        Advance(form, deltaTime);
+    Simulate(deltaTime);
+
+    const f32 radius = player.GetRadius();
+    for (const Form &form : m_Forms)
+    {
+        if (form.Kind != FormKind::Solid)
+            continue;
+        const TKit::Optional<Body::Penetration> penetration = form.RigidBody.Penetrate(player.GetPosition(), radius);
+        if (penetration)
+            player.PushOut(penetration->Normal, penetration->Depth);
+    }
 
     const f32v3 position = player.GetPosition();
     const f32 distance = TKit::Math::Norm(position);
     if (distance > 0.f)
-        player.ConfineToRadius(m_Shell.GetRadius(position / distance, m_Time));
+        player.ConfineToRadius(m_Shell.GetRadius(position / distance));
 
-    m_Outcome = DetectOutcome(player.GetPosition());
+    m_Outcome = DetectOutcome(player.GetPosition(), radius);
 }
 
 void Level::Draw(Onyx::RenderContext<D3> &context, const f32 brightness) const
@@ -167,18 +140,18 @@ void Level::Draw(Onyx::RenderContext<D3> &context, const f32 brightness) const
     context.NoClip();
     context.Material(m_Material);
     context.RenderFlags(Onyx::RenderModeFlag_Shaded);
-    context.SetAmbientLight(AMBIENT);
-    context.SetAmbientIntensity(AMBIENT_INTENSITY * scale);
+    context.SetAmbientLight(m_AmbientTint);
+    context.SetAmbientIntensity(m_Light.AmbientIntensity * scale);
     context.PointLight(Onyx::PointLightParameters<D3>{.Position = f32v3{0.f},
-                                                      .Tint = CORE_LIGHT,
+                                                      .Tint = m_CoreTint,
                                                       .LightRadius = m_LightRadius,
-                                                      .Intensity = LIGHT_INTENSITY * scale});
+                                                      .Intensity = m_Light.CoreIntensity * scale});
 
     m_Shell.Draw(context);
     for (const Form &form : m_Forms)
     {
         context.FillColor(form.Tint);
-        form.Body.Draw(context, Onyx::Transform<D3>::ComputeTransform(form.Position, f32v3{1.f}, form.Orientation));
+        form.RigidBody.Draw(context);
     }
     context.Pop();
 }
@@ -188,134 +161,143 @@ Level::Outcome Level::GetOutcome() const
     return m_Outcome;
 }
 
-void Level::DecodeLethalPanels(ByteReader &reader, const f32 density)
+void Level::DecodeLethalPanels(ByteReader &reader, const f32 density, const Palette &colors)
 {
     for (u32 triangle = 0; triangle < m_Shell.GetTriangleCount(); ++triangle)
     {
         if (!reader.NextChance(density))
             continue;
-        m_Shell.SetPanel(triangle, Shell::Panel::Lethal, DecodeHostileColor(reader));
+        m_Shell.SetPanel(triangle, Shell::Panel::Lethal, Mix(colors.EnemyPurple, colors.EnemyRed, reader.NextUnit()));
     }
 }
 
 void Level::DecodeGoal(ByteReader &reader, const LevelParams &params)
 {
-    if (reader.NextChance(params.Goal.ShellChance))
+    const GoalParams &goal = params.Mechanics.Goal;
+    const Onyx::Color &tint = params.LookFeel.Colors.GoalGreen;
+    if (reader.NextChance(goal.ShellChance))
     {
         const u32 count = m_Shell.GetTriangleCount();
         u32 triangle = reader.NextIndex(count);
         for (u32 step = 0; step < count && m_Shell.GetPanel(triangle) == Shell::Panel::Lethal; ++step)
             triangle = (triangle + 1) % count;
-        m_Shell.SetPanel(triangle, Shell::Panel::Goal, GOAL_GREEN);
+        m_Shell.SetPanel(triangle, Shell::Panel::Goal, tint);
         return;
     }
 
-    const u32 primitiveCount = reader.NextCount(GOAL_MIN_PRIMITIVES, GOAL_MAX_PRIMITIVES);
-    const PrimitiveArray primitives = DecodePrimitives(reader, primitiveCount, params.Goal.Size, params.Goal.Size);
+    const EnemyParams &enemies = params.Mechanics.Enemies;
     SpawnForm(reader,
               FormSpec{.Kind = FormKind::Goal,
-                       .Tint = GOAL_GREEN,
-                       .BlendRadius = params.Enemies.BlendRadius,
-                       .MinDistance = params.Goal.MinSpawnDistance,
-                       .MinDriftSpeed = params.Goal.DriftSpeed,
-                       .MaxDriftSpeed = params.Goal.DriftSpeed,
-                       .TumbleSpeed = params.Enemies.TumbleSpeed},
-              primitives);
+                       .Tint = tint,
+                       .Shape = ShapeRequest{.MinSize = goal.Size,
+                                             .MaxSize = goal.Size,
+                                             .MinPrimitives = goal.MinPrimitives,
+                                             .MaxPrimitives = goal.MaxPrimitives,
+                                             .BlendRadius = enemies.BlendRadius,
+                                             .MinOpening = ComputeMinOpening(params),
+                                             .Carved = params.Flags.CarvedShapes},
+                       .MinDistance = goal.MinSpawnDistance,
+                       .MinDriftSpeed = goal.DriftSpeed,
+                       .MaxDriftSpeed = goal.DriftSpeed,
+                       .TumbleSpeed = enemies.TumbleSpeed},
+              params);
 }
 
-void Level::DecodeEnemies(ByteReader &reader, const LevelParams &params)
+template <typename CrowdParams>
+void Level::DecodeCrowd(ByteReader &reader, const FormKind kind, const CrowdParams &crowd, const Onyx::Color &low,
+                        const Onyx::Color &high, const LevelParams &params)
 {
-    const EnemyParams &enemies = params.Enemies;
-    const f32 safeRadius = TKit::Math::Max(MIN_SAFE_SPAWN_RADIUS, SAFE_SPAWN_FRACTION * params.Shell.Radius);
-    const u32 count = reader.NextCount(enemies.MinCount, enemies.MaxCount);
+    const PhysicsParams &physics = params.Mechanics.Physics;
+    const f32 safeDistance =
+        TKit::Math::Max(physics.MinSafeSpawnRadius, physics.SafeSpawnFraction * params.Mechanics.Shell.Radius);
+    const u32 count = reader.NextCount(crowd.MinCount, crowd.MaxCount);
     for (u32 i = 0; i < count; ++i)
     {
-        const u32 primitiveCount = reader.NextCount(enemies.MinPrimitives, enemies.MaxPrimitives);
-        const PrimitiveArray primitives = DecodePrimitives(reader, primitiveCount, enemies.MinSize, enemies.MaxSize);
-        const Onyx::Color tint = DecodeHostileColor(reader);
+        const Onyx::Color tint = Mix(low, high, reader.NextUnit());
         SpawnForm(reader,
-                  FormSpec{.Kind = FormKind::Enemy,
+                  FormSpec{.Kind = kind,
                            .Tint = tint,
-                           .BlendRadius = enemies.BlendRadius,
-                           .MinDistance = safeRadius,
-                           .MinDriftSpeed = enemies.MinDriftSpeed,
-                           .MaxDriftSpeed = enemies.MaxDriftSpeed,
-                           .TumbleSpeed = enemies.TumbleSpeed},
-                  primitives);
+                           .Shape = ShapeRequest{.MinSize = crowd.MinSize,
+                                                 .MaxSize = crowd.MaxSize,
+                                                 .MinPrimitives = crowd.MinPrimitives,
+                                                 .MaxPrimitives = crowd.MaxPrimitives,
+                                                 .BlendRadius = crowd.BlendRadius,
+                                                 .MinOpening = ComputeMinOpening(params),
+                                                 .Carved = params.Flags.CarvedShapes},
+                           .MinDistance = safeDistance,
+                           .MinDriftSpeed = crowd.MinDriftSpeed,
+                           .MaxDriftSpeed = crowd.MaxDriftSpeed,
+                           .TumbleSpeed = crowd.TumbleSpeed},
+                  params);
     }
 }
 
-void Level::SpawnForm(ByteReader &reader, const FormSpec &spec, const TKit::Span<const BlobPrimitive> primitives)
+void Level::SpawnForm(ByteReader &reader, const FormSpec &spec, const LevelParams &params)
 {
-    Blob body(m_Pool, primitives, spec.BlendRadius);
-    const f32 bounding = body.GetBoundingRadius();
+    const PhysicsParams &physics = params.Mechanics.Physics;
+    const ShapeRecipe recipe = DecodeShape(reader, spec.Shape, params.Mechanics.Shapes);
+    Blob shape(m_Pool, recipe.Primitives, recipe.BlendRadius, params.LookFeel.Shapes.MeshResolution);
+    const f32 bounding = shape.GetBoundingRadius();
 
-    const f32 farthest = TKit::Math::Max(m_LowestShellRadius - bounding - EDGE_MARGIN, 0.f);
-    const f32 requested = spec.Kind == FormKind::Enemy ? spec.MinDistance + bounding : spec.MinDistance;
-    const f32 distance = reader.NextRange(TKit::Math::Min(requested, farthest), farthest);
-    const f32v3 radial = reader.NextDirection();
+    const f32 farthest = TKit::Math::Max(m_Shell.GetMinRadius() - bounding - physics.WallMargin, 0.f);
+    const f32 requested = spec.Kind == FormKind::Goal ? spec.MinDistance : spec.MinDistance + bounding;
+    const f32 nearest = TKit::Math::Min(requested, farthest);
 
-    const bool orbits = reader.NextChance(ORBIT_CHANCE);
+    f32v3 position{0.f};
+    for (u32 attempt = 0; attempt < MAX_SPAWN_ATTEMPTS; ++attempt)
+    {
+        const f32 distance = reader.NextRange(nearest, farthest);
+        position = reader.NextDirection() * distance;
+        if (!IsCrowded(position, bounding))
+            break;
+    }
+
     const f32 speed = reader.NextRange(spec.MinDriftSpeed, spec.MaxDriftSpeed);
     const f32v3 heading = reader.NextDirection();
     const f32q orientation = reader.NextRotation();
     const f32v3 tumbleAxis = reader.NextDirection();
-    const f32 tumbleScale = reader.NextRange(MIN_TUMBLE_SCALE, MAX_TUMBLE_SCALE);
+    const f32 tumbleScale = reader.NextRange(physics.MinTumbleScale, physics.MaxTumbleScale);
 
-    Form form{.Body = std::move(body),
-              .Tint = spec.Tint,
-              .Kind = spec.Kind,
-              .Mode = orbits ? DriftMode::Orbit : DriftMode::Bounce,
-              .Position = radial * distance,
-              .Orientation = orientation,
-              .TumbleAxis = tumbleAxis,
-              .TumbleRate = spec.TumbleSpeed * tumbleScale};
-
-    if (orbits)
-    {
-        const f32v3 tangent = heading - radial * TKit::Math::Dot(heading, radial);
-        const f32 tangentLength = TKit::Math::Norm(tangent);
-        form.OrbitAxis = tangentLength > MIN_AXIS_LENGTH ? tangent / tangentLength
-                                                         : Onyx::Transform<D3>::CreateOrthogonalBase(radial)[0];
-        form.OrbitRate = speed / TKit::Math::Max(distance, MIN_ORBIT_RADIUS);
-    }
-    else
-        form.Velocity = heading * speed;
-
-    m_Forms.Append(std::move(form));
+    const Body::Motion motion{.Position = position,
+                              .Orientation = orientation,
+                              .Velocity = heading * speed,
+                              .AngularVelocity = tumbleAxis * (spec.TumbleSpeed * tumbleScale)};
+    m_Forms.Append(
+        Form{.RigidBody = Body(std::move(shape), motion, physics.Density), .Tint = spec.Tint, .Kind = spec.Kind});
 }
 
-void Level::Advance(Form &form, const f32 deltaTime) const
+bool Level::IsCrowded(const f32v3 &position, const f32 radius) const
 {
-    if (form.Mode == DriftMode::Orbit)
-        form.Position = f32q::FromAngleAxis(form.OrbitRate * deltaTime, form.OrbitAxis) * form.Position;
-    else
+    for (const Form &form : m_Forms)
     {
-        form.Position += form.Velocity * deltaTime;
-        const f32 distance = TKit::Math::Norm(form.Position);
-        if (distance > 0.f)
-        {
-            const f32v3 outward = form.Position / distance;
-            const f32 limit = TKit::Math::Max(m_Shell.GetRadius(outward, m_Time) - form.Body.GetBoundingRadius(), 0.f);
-            const f32 outwardSpeed = TKit::Math::Dot(form.Velocity, outward);
-            if (distance >= limit && outwardSpeed > 0.f)
-            {
-                form.Position = outward * limit;
-                form.Velocity -= outward * (2.f * outwardSpeed);
-            }
-        }
+        const f32 reach = radius + form.RigidBody.GetBoundingRadius();
+        if (TKit::Math::NormSquared(position - form.RigidBody.GetPosition()) < reach * reach)
+            return true;
     }
-
-    form.Orientation =
-        TKit::Math::Normalize(f32q::FromAngleAxis(form.TumbleRate * deltaTime, form.TumbleAxis) * form.Orientation);
+    return false;
 }
 
-Level::Outcome Level::DetectOutcome(const f32v3 &position) const
+void Level::Simulate(const f32 deltaTime)
+{
+    const f32 step = deltaTime / f32(m_Physics.Substeps);
+    for (u32 substep = 0; substep < m_Physics.Substeps; ++substep)
+    {
+        for (Form &form : m_Forms)
+            form.RigidBody.Advance(step, m_Physics.AngularDamping);
+        for (u32 first = 0; first < m_Forms.GetSize(); ++first)
+            for (u32 second = first + 1; second < m_Forms.GetSize(); ++second)
+                m_Forms[first].RigidBody.Collide(m_Forms[second].RigidBody, m_Physics.Restitution);
+        for (Form &form : m_Forms)
+            form.RigidBody.CollideWithShell(m_Shell, m_Physics.Restitution);
+    }
+}
+
+Level::Outcome Level::DetectOutcome(const f32v3 &position, const f32 radius) const
 {
     Outcome outcome = Outcome::Playing;
     for (const Form &form : m_Forms)
     {
-        if (!form.IsTouching(position))
+        if (form.Kind == FormKind::Solid || !form.RigidBody.Penetrate(position, radius))
             continue;
         if (form.Kind == FormKind::Enemy)
             return Outcome::Died;
@@ -327,7 +309,7 @@ Level::Outcome Level::DetectOutcome(const f32v3 &position) const
         return outcome;
 
     const f32v3 direction = position / distance;
-    if (distance < m_Shell.GetRadius(direction, m_Time) - Player::RADIUS - SHELL_CONTACT_EPSILON)
+    if (distance < m_Shell.GetRadius(direction) - radius - SHELL_CONTACT_EPSILON)
         return outcome;
 
     const Shell::Panel panel = m_Shell.GetPanel(m_Shell.GetTriangleAt(direction));
@@ -336,12 +318,40 @@ Level::Outcome Level::DetectOutcome(const f32v3 &position) const
     return panel == Shell::Panel::Goal ? Outcome::Won : outcome;
 }
 
-bool Level::Form::IsTouching(const f32v3 &point) const
+EnemyParams Sanitize(const EnemyParams params)
 {
-    const f32v3 offset = point - Position;
-    const f32 reach = Body.GetBoundingRadius() + Player::RADIUS;
-    if (TKit::Math::NormSquared(offset) >= reach * reach)
-        return false;
-    return Body.Distance(TKit::Math::Conjugate(Orientation) * offset) < Player::RADIUS;
+    return SanitizeCrowd(params, Level::MAX_ENEMIES);
+}
+
+SolidParams Sanitize(const SolidParams params)
+{
+    return SanitizeCrowd(params, Level::MAX_SOLIDS);
+}
+
+GoalParams Sanitize(GoalParams params)
+{
+    params.ShellChance = TKit::Math::Clamp(params.ShellChance, 0.f, 1.f);
+    params.Size = TKit::Math::Max(params.Size, MIN_FORM_SIZE);
+    params.DriftSpeed = TKit::Math::Max(params.DriftSpeed, 0.f);
+    params.MinSpawnDistance = TKit::Math::Max(params.MinSpawnDistance, 0.f);
+    OrderPair(params.MinPrimitives, params.MaxPrimitives);
+    params.MinPrimitives = TKit::Math::Clamp(params.MinPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    params.MaxPrimitives = TKit::Math::Clamp(params.MaxPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    return params;
+}
+
+PhysicsParams Sanitize(PhysicsParams params)
+{
+    params.Restitution = TKit::Math::Clamp(params.Restitution, 0.f, 1.f);
+    params.Density = TKit::Math::Max(params.Density, MIN_DENSITY);
+    params.AngularDamping = TKit::Math::Clamp(params.AngularDamping, 0.f, 1.f);
+    params.Substeps = TKit::Math::Clamp(params.Substeps, 1U, MAX_SUBSTEPS);
+    params.WallMargin = TKit::Math::Max(params.WallMargin, 0.f);
+    OrderPair(params.MinTumbleScale, params.MaxTumbleScale);
+    params.MinTumbleScale = TKit::Math::Max(params.MinTumbleScale, 0.f);
+    params.MaxTumbleScale = TKit::Math::Max(params.MaxTumbleScale, 0.f);
+    params.MinSafeSpawnRadius = TKit::Math::Max(params.MinSafeSpawnRadius, 0.f);
+    params.SafeSpawnFraction = TKit::Math::Clamp(params.SafeSpawnFraction, 0.f, 1.f);
+    return params;
 }
 } // namespace Lim
