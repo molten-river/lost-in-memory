@@ -18,18 +18,27 @@ set(SOURCES
 
 include(FetchContent)
 
+set(ONYX_PATCH_STEPS
+    PATCH_COMMAND
+    ${CMAKE_COMMAND}
+    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
+    -P
+    ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-dynamic-cull.cmake)
+
 if(WIN32)
-  set(ONYX_PATCH_STEPS
-      PATCH_COMMAND
-      ${CMAKE_COMMAND}
-      -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
-      -P
-      ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-overlay.cmake
-      COMMAND
-      ${CMAKE_COMMAND}
-      -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
-      -P
-      ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-surface-name.cmake)
+  list(
+    APPEND
+    ONYX_PATCH_STEPS
+    COMMAND
+    ${CMAKE_COMMAND}
+    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
+    -P
+    ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-overlay.cmake
+    COMMAND
+    ${CMAKE_COMMAND}
+    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
+    -P
+    ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-surface-name.cmake)
 endif()
 
 FetchContent_Declare(
