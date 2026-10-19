@@ -12,7 +12,8 @@ set(SOURCES
     lim/shell.cpp
     lim/blob.cpp
     lim/player.cpp
-    lim/level.cpp)
+    lim/level.cpp
+    lim/sandbox_screen.cpp)
 
 include(FetchContent)
 
