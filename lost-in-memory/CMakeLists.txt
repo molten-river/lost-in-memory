@@ -8,7 +8,8 @@ set(SOURCES
     lim/level_params.cpp
     lim/font_library.cpp
     lim/byte_reader.cpp
-    lim/region.cpp)
+    lim/region.cpp
+    lim/shell.cpp)
 
 include(FetchContent)
 
