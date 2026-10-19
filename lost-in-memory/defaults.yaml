@@ -1,0 +1,24 @@
+Shell:
+  Radius: 30
+  Subdivisions: 4
+  WaveAmplitude: 1.2
+  WaveSpeed: 0.6
+  WaveFrequency: 3
+  LethalDensity: 0.06
+Enemies:
+  MinCount: 6
+  MaxCount: 12
+  MinSize: 1.2
+  MaxSize: 3
+  MinPrimitives: 2
+  MaxPrimitives: 5
+  BlendRadius: 0.6
+  MinDriftSpeed: 1
+  MaxDriftSpeed: 5
+  TumbleSpeed: 0.4
+Goal:
+  ShellChance: 0.3
+  Size: 1.5
+  DriftSpeed: 1.5
+  MinSpawnDistance: 15
+TextSize: 16
