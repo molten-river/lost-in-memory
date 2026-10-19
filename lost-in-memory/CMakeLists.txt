@@ -10,7 +10,8 @@ set(SOURCES
     lim/byte_reader.cpp
     lim/region.cpp
     lim/shell.cpp
-    lim/blob.cpp)
+    lim/blob.cpp
+    lim/player.cpp)
 
 include(FetchContent)
 
@@ -38,6 +39,10 @@ FetchContent_MakeAvailable(onyx)
 
 add_subdirectory(platform)
 
+if(NOT TARGET glfw)
+  find_package(glfw3 REQUIRED)
+endif()
+
 if(WIN32)
   target_compile_definitions(onyx PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
@@ -53,4 +58,4 @@ embed_assets(
   NAMESPACE Lim::Embedded
   OUTPUT_HEADER lim/embedded_assets.hpp
   FILES assets/fonts/FiraCodeNerdFontMono-Regular.ttf)
-target_link_libraries(lost-in-memory PRIVATE onyx platform)
+target_link_libraries(lost-in-memory PRIVATE onyx platform glfw)
