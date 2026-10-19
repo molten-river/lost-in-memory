@@ -9,8 +9,12 @@
     {
       "name": "base",
       "hidden": true,
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build/${presetName}",
       "cacheVariables": {
+        "CMAKE_C_COMPILER": "clang",
+        "CMAKE_CXX_COMPILER": "clang++",
+
         "TOOLKIT_BUILD_TESTS": "OFF",
         "TOOLKIT_BUILD_PERFORMANCE": "OFF",
         "TOOLKIT_ENABLE_SYMBOLS": "OFF",
@@ -84,7 +88,8 @@
         "TOOLKIT_ENABLE_INFO_LOGS": "ON",
         "TOOLKIT_ENABLE_WARNING_LOGS": "ON",
         "TOOLKIT_ENABLE_ERROR_LOGS": "ON",
-        "TOOLKIT_ENABLE_ASSERTS": "ON"
+        "TOOLKIT_ENABLE_ASSERTS": "ON",
+        "TOOLKIT_ENABLE_ENSURE": "ON"
       }
     },
     {

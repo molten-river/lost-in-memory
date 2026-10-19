@@ -4,13 +4,32 @@ project(lost-in-memory)
 set(SOURCES lim/main.cpp)
 
 include(FetchContent)
+
+if(WIN32)
+  set(ONYX_PATCH_STEPS
+      PATCH_COMMAND
+      ${CMAKE_COMMAND}
+      -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
+      -P
+      ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-overlay.cmake
+      COMMAND
+      ${CMAKE_COMMAND}
+      -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
+      -P
+      ${PROJECT_SOURCE_DIR}/../cmake/patch-onyx-surface-name.cmake)
+endif()
+
 FetchContent_Declare(
   onyx
   GIT_REPOSITORY https://github.com/ismawno/onyx.git
-  GIT_TAG main
+  GIT_TAG v0.11.x
   GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE)
+  GIT_PROGRESS TRUE ${ONYX_PATCH_STEPS})
 FetchContent_MakeAvailable(onyx)
+
+if(WIN32)
+  target_compile_definitions(onyx PRIVATE _CRT_SECURE_NO_WARNINGS)
+endif()
 
 add_executable(lost-in-memory ${SOURCES})
 target_link_libraries(lost-in-memory PRIVATE onyx)
