@@ -1,9 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
 project(lost-in-memory)
 
+include(${PROJECT_SOURCE_DIR}/../cmake/embed.cmake)
+
 set(SOURCES
     lim/main.cpp
-    lim/level_params.cpp)
+    lim/level_params.cpp
+    lim/font_library.cpp)
 
 include(FetchContent)
 
@@ -39,4 +42,9 @@ target_compile_options(lost-in-memory PRIVATE -Wall -Wextra -Wpedantic)
 tkit_register_for_reflection(lost-in-memory SOURCES lim/level_params.hpp)
 tkit_configure_compile_link_options(lost-in-memory NO_EXCEPTIONS NO_RTTI)
 target_compile_definitions(lost-in-memory PRIVATE LIM_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
+embed_assets(
+  lost-in-memory
+  NAMESPACE Lim::Embedded
+  OUTPUT_HEADER lim/embedded_assets.hpp
+  FILES assets/fonts/FiraCodeNerdFontMono-Regular.ttf)
 target_link_libraries(lost-in-memory PRIVATE onyx)
