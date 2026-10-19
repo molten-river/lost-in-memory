@@ -6,7 +6,9 @@ include(${PROJECT_SOURCE_DIR}/../cmake/embed.cmake)
 set(SOURCES
     lim/main.cpp
     lim/level_params.cpp
-    lim/font_library.cpp)
+    lim/font_library.cpp
+    lim/byte_reader.cpp
+    lim/region.cpp)
 
 include(FetchContent)
 
