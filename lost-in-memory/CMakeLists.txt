@@ -9,7 +9,8 @@ set(SOURCES
     lim/font_library.cpp
     lim/byte_reader.cpp
     lim/region.cpp
-    lim/shell.cpp)
+    lim/shell.cpp
+    lim/blob.cpp)
 
 include(FetchContent)
 
