@@ -73,3 +73,6 @@ Testing/
 
 # Archives
 *.zip
+
+# direnv
+.direnv/
