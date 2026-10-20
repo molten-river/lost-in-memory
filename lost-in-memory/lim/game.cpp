@@ -71,7 +71,8 @@ void Game::Run()
         m_Player.ApplyTo(m_Camera);
 
         m_Context->Flush();
-        m_Level.Draw(*m_Context, fade.Brightness);
+        if (m_State != State::Sandbox)
+            m_Level.Draw(*m_Context, fade.Brightness);
         const SandboxScreen::Action action =
             m_Sandbox.Draw(m_Params, m_Level.GetOutcome() == Level::Outcome::Won, m_Region->GetAddress(), fade.Opacity);
         if (m_State == State::Sandbox && fade.Opacity >= 1.f)
@@ -90,6 +91,7 @@ void Game::Restart()
     m_Level.Generate(*m_Region, m_Params);
     m_Player.Reset();
     m_Player.SetCursorLocked(true);
+    m_View->RemoveFlags(Onyx::RenderViewFlag_Hidden);
     Enter(State::FadingIn);
 }
 
@@ -134,6 +136,7 @@ Game::Fade Game::Step(const f32 deltaTime)
         if (m_StateSeconds < fadeSeconds)
             return Fade{.Brightness = 1.f - progress, .Opacity = 0.f};
         m_Player.SetCursorLocked(false);
+        m_View->AddFlags(Onyx::RenderViewFlag_Hidden);
         Enter(State::Sandbox);
         return Fade{.Brightness = 0.f, .Opacity = 0.f};
     case State::Sandbox:
