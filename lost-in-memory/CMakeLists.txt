@@ -83,5 +83,5 @@ embed_assets(
   lost-in-memory
   NAMESPACE Lim::Embedded
   OUTPUT_HEADER lim/embedded_assets.hpp
-  FILES assets/fonts/FiraCodeNerdFontMono-Regular.ttf)
+  FILES assets/fonts/FiraCodeNerdFontMonoPlus-Medium.ttf)
 target_link_libraries(lost-in-memory PRIVATE onyx platform glfw)

@@ -13,9 +13,17 @@ Onyx::Resource FontLibrary::Get()
     if (m_Font)
         return *m_Font;
 
-    const Embedded::EmbeddedAsset &asset = Embedded::FiraCodeNerdFontMonoRegular();
-    Onyx::Result<Onyx::FontData> loaded = Onyx::LoadFontDataFromMemory(
-        asset.Bytes.GetData(), static_cast<u32>(asset.Bytes.GetSize()), Onyx::FontLoadOptions{});
+    const Embedded::EmbeddedAsset &asset = Embedded::FiraCodeNerdFontMonoPlusMedium();
+
+    Onyx::FontLoadOptions options{};
+    options.CharSet.LoadRange(Onyx::CharSets.ASCII);
+    options.CharSet.Load(Onyx::ArrowDownIcon);
+    options.CharSet.Load(Onyx::ArrowRightIcon);
+    options.CharSet.Load(Onyx::BulletIcon);
+    options.CharSet.Load(Onyx::CrossIcon);
+
+    Onyx::Result<Onyx::FontData> loaded =
+        Onyx::LoadFontDataFromMemory(asset.Bytes.GetData(), static_cast<u32>(asset.Bytes.GetSize()), options);
     if (!loaded)
     {
         TKIT_LOG_ERROR("[LIM][FONTS] Could not load '{}' ({}), using the built-in font", asset.Name,
