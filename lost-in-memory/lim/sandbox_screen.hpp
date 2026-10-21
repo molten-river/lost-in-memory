@@ -3,6 +3,7 @@
 #include "lim/alias.hpp"
 #include "lim/font_library.hpp"
 #include "lim/level_params.hpp"
+#include "lim/play_mode.hpp"
 
 #include "onyx/handle.hpp"
 #include "onyx/overlay.hpp"
@@ -22,13 +23,20 @@ class SandboxScreen
         NewRegion
     };
 
+    enum class Title : u8
+    {
+        Cleared,
+        Terminated,
+        Interrupted
+    };
+
     SandboxScreen(Onyx::Window &window, FontLibrary &fonts);
 
     /// Call every frame before Onyx::Transfer(); an opacity of zero submits nothing but still flushes the overlay.
-    [[nodiscard]] Action Draw(LevelParams &params, bool won, u64 address, f32 opacity);
+    [[nodiscard]] Action Draw(LevelParams &params, PlayMode mode, Title title, u64 address, f32 opacity);
 
   private:
-    [[nodiscard]] Action DrawPanel(LevelParams &params, bool won, u64 address, f32 opacity);
+    [[nodiscard]] Action DrawPanel(LevelParams &params, PlayMode mode, Title title, u64 address, f32 opacity);
     void ApplyTheme(const LookFeelParams &lookFeel, f32 screenHeight, f32 alpha);
 
     Onyx::Resource m_Font;
