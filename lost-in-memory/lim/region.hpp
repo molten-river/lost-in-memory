@@ -13,8 +13,14 @@ inline constexpr usize REGION_BYTES = 4096;
 class Region
 {
   public:
-    /// Snapshots live process memory, retrying until a region with enough non-zero variety is found.
-    [[nodiscard]] static TKit::Optional<Region> Capture();
+    enum class Filter : u8
+    {
+        Varied,
+        NonZero
+    };
+
+    /// Snapshots live process memory, retrying until a region passing the filter is found.
+    [[nodiscard]] static TKit::Optional<Region> Capture(Filter filter);
 
     [[nodiscard]] u64 GetAddress() const;
     [[nodiscard]] TKit::Span<const std::byte> GetBytes() const;

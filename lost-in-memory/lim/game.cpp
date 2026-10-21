@@ -1,5 +1,7 @@
 #include "lim/game.hpp"
 
+#include "lim/debug_tools.hpp"
+
 #include "onyx/onyx.hpp"
 #include "onyx/platform.hpp"
 
@@ -37,13 +39,18 @@ constexpr u32 CAPTURE_ATTEMPTS = 3;
     specs.Flags = BORDERLESS_FLAGS;
     return specs;
 }
+
+[[nodiscard]] SandboxScreen::Title TitleFromOutcome(const Level::Outcome outcome)
+{
+    return outcome == Level::Outcome::Won ? SandboxScreen::Title::Cleared : SandboxScreen::Title::Terminated;
+}
 } // namespace
 
-Game::Game()
+Game::Game(const PlayMode mode)
     : m_Window(Onyx::OpenWindow({.Window = MakeWindowSpecs()})),
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
       m_Context(Onyx::CreateRenderContext<D3>()), m_Params(Sanitize(LoadLevelParams())), m_Sandbox(*m_Window, m_Fonts),
-      m_Player(*m_Window)
+      m_Player(*m_Window), m_Mode(mode)
 {
     m_Camera.PerspParameters.Far = CAMERA_FAR;
     m_Context->AddTarget(m_View);
@@ -51,8 +58,9 @@ Game::Game()
 
 void Game::Run()
 {
+    const Region::Filter filter = CaptureFilter();
     for (u32 attempt = 0; attempt < CAPTURE_ATTEMPTS && !m_Region; ++attempt)
-        m_Region = Region::Capture();
+        m_Region = Region::Capture(filter);
     if (!m_Region)
     {
         TKIT_LOG_ERROR("[LIM][GAME] Could not capture a memory region after {} attempts", CAPTURE_ATTEMPTS);
@@ -67,14 +75,23 @@ void Game::Run()
         if (m_Window->IsKeyPressed(Onyx::Key_Escape))
             Onyx::Quit(Onyx::QuitFlag_DestroyWindows);
 
-        const Fade fade = Step(TKit::Math::Min(Onyx::GetDeltaTime(m_Window).AsSeconds(), MAX_FRAME_SECONDS));
+        bool enterTriggered = false;
+        if constexpr (DEBUG_TOOLS)
+        {
+            const bool enterPressed = m_Window->IsKeyPressed(Onyx::Key_Enter);
+            enterTriggered = enterPressed && !m_EnterWasPressed;
+            m_EnterWasPressed = enterPressed;
+        }
+
+        const Fade fade =
+            Step(TKit::Math::Min(Onyx::GetDeltaTime(m_Window).AsSeconds(), MAX_FRAME_SECONDS), enterTriggered);
         m_Player.ApplyTo(m_Camera);
 
         m_Context->Flush();
         if (m_State != State::Sandbox)
             m_Level.Draw(*m_Context, fade.Brightness);
         const SandboxScreen::Action action =
-            m_Sandbox.Draw(m_Params, m_Level.GetOutcome() == Level::Outcome::Won, m_Region->GetAddress(), fade.Opacity);
+            m_Sandbox.Draw(m_Params, m_Mode, m_Title, m_Region->GetAddress(), fade.Opacity);
         if (m_State == State::Sandbox && fade.Opacity >= 1.f)
             m_PendingAction = action;
 
@@ -88,7 +105,7 @@ void Game::Restart()
     m_Window->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
     m_View->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
     m_Player.Configure(m_Params.LookFeel.Player);
-    m_Level.Generate(*m_Region, m_Params);
+    m_Level.Generate(*m_Region, m_Params, m_Mode);
     m_Player.Reset();
     m_Player.SetCursorLocked(true);
     m_View->RemoveFlags(Onyx::RenderViewFlag_Hidden);
@@ -103,7 +120,7 @@ void Game::Rebuild(const SandboxScreen::Action action)
 
     if (action == SandboxScreen::Action::NewRegion)
     {
-        const TKit::Optional<Region> fresh = Region::Capture();
+        const TKit::Optional<Region> fresh = Region::Capture(CaptureFilter());
         if (fresh)
             m_Region = *fresh;
         else
@@ -113,7 +130,7 @@ void Game::Rebuild(const SandboxScreen::Action action)
     Restart();
 }
 
-Game::Fade Game::Step(const f32 deltaTime)
+Game::Fade Game::Step(const f32 deltaTime, const bool enterTriggered)
 {
     m_StateSeconds += deltaTime;
     const f32 fadeSeconds = m_Params.LookFeel.FadeSeconds;
@@ -123,14 +140,27 @@ Game::Fade Game::Step(const f32 deltaTime)
     switch (m_State)
     {
     case State::FadingIn:
+        if (enterTriggered)
+        {
+            Interrupt();
+            return Fade{.Brightness = 1.f, .Opacity = 0.f};
+        }
         if (m_StateSeconds >= fadeSeconds)
             Enter(State::Playing);
         return Fade{.Brightness = progress, .Opacity = 0.f};
     case State::Playing:
         m_Player.Update(deltaTime);
         m_Level.Update(deltaTime, m_Player);
+        if (enterTriggered)
+        {
+            Interrupt();
+            return Fade{.Brightness = 1.f, .Opacity = 0.f};
+        }
         if (m_Level.GetOutcome() != Level::Outcome::Playing)
+        {
+            m_Title = TitleFromOutcome(m_Level.GetOutcome());
             Enter(State::FadingOut);
+        }
         return Fade{.Brightness = 1.f, .Opacity = 0.f};
     case State::FadingOut:
         if (m_StateSeconds < fadeSeconds)
@@ -149,5 +179,16 @@ void Game::Enter(const State state)
 {
     m_State = state;
     m_StateSeconds = 0.f;
+}
+
+void Game::Interrupt()
+{
+    m_Title = SandboxScreen::Title::Interrupted;
+    Enter(State::FadingOut);
+}
+
+Region::Filter Game::CaptureFilter() const
+{
+    return m_Params.Flags.StructuralDecode ? Region::Filter::NonZero : Region::Filter::Varied;
 }
 } // namespace Lim

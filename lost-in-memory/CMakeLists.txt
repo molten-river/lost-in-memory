@@ -78,6 +78,7 @@ tkit_register_for_reflection(lost-in-memory SOURCES
     lim/formula_params.hpp)
 tkit_configure_compile_link_options(lost-in-memory NO_EXCEPTIONS NO_RTTI)
 target_compile_definitions(lost-in-memory PRIVATE LIM_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
+target_compile_definitions(lost-in-memory PRIVATE LIM_DEBUG_TOOLS=$<IF:$<CONFIG:Debug>,1,0>)
 embed_assets(
   lost-in-memory
   NAMESPACE Lim::Embedded

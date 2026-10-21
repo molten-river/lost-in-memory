@@ -4,6 +4,7 @@
 #include "lim/font_library.hpp"
 #include "lim/level.hpp"
 #include "lim/level_params.hpp"
+#include "lim/play_mode.hpp"
 #include "lim/player.hpp"
 #include "lim/region.hpp"
 #include "lim/sandbox_screen.hpp"
@@ -21,7 +22,7 @@ namespace Lim
 class Game
 {
   public:
-    Game();
+    explicit Game(PlayMode mode);
 
     Game(const Game &) = delete;
     Game &operator=(const Game &) = delete;
@@ -45,8 +46,10 @@ class Game
 
     void Restart();
     void Rebuild(SandboxScreen::Action action);
-    [[nodiscard]] Fade Step(f32 deltaTime);
+    [[nodiscard]] Fade Step(f32 deltaTime, bool enterTriggered);
     void Enter(State state);
+    void Interrupt();
+    [[nodiscard]] Region::Filter CaptureFilter() const;
 
     Onyx::Window *m_Window;
     Onyx::Camera<Onyx::D3> m_Camera{};
@@ -57,9 +60,12 @@ class Game
     SandboxScreen m_Sandbox;
     Player m_Player;
     TKit::Optional<Region> m_Region{};
+    PlayMode m_Mode;
     State m_State = State::FadingIn;
     f32 m_StateSeconds = 0.f;
     SandboxScreen::Action m_PendingAction = SandboxScreen::Action::None;
+    SandboxScreen::Title m_Title = SandboxScreen::Title::Cleared;
+    bool m_EnterWasPressed = false;
     Level m_Level;
 };
 } // namespace Lim

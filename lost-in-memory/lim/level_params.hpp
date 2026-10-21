@@ -2,6 +2,7 @@
 
 #include "lim/alias.hpp"
 #include "lim/form_params.hpp"
+#include "lim/formula_params.hpp"
 #include "lim/palette.hpp"
 #include "lim/player_params.hpp"
 #include "lim/shape_params.hpp"
@@ -16,6 +17,8 @@ struct FeatureFlags
     TKIT_REFLECT_DECLARE(FeatureFlags)
     bool ShellVertexNoise = true;
     bool CarvedShapes = true;
+    bool StructuralDecode = true;
+    bool ChainLinks = false;
 };
 
 struct LightParams
@@ -47,6 +50,10 @@ struct MechanicsParams
     SolidParams Solids;
     GoalParams Goal;
     PhysicsParams Physics;
+    RecordParams Records;
+    GraphParams Graph;
+    EvolutionParams Evolution;
+    TestBenchParams TestBench;
 };
 
 struct LevelParams

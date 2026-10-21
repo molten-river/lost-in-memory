@@ -5,6 +5,7 @@
 #include "tkit/container/tier_array.hpp"
 #include "tkit/math/math.hpp"
 #include "tkit/reflection/lim/form_params.hpp"
+#include "tkit/reflection/lim/formula_params.hpp"
 #include "tkit/reflection/lim/level_params.hpp"
 #include "tkit/reflection/lim/palette.hpp"
 #include "tkit/reflection/lim/player_params.hpp"
@@ -252,6 +253,10 @@ MechanicsParams Sanitize(MechanicsParams params)
     params.Solids = Sanitize(params.Solids);
     params.Goal = Sanitize(params.Goal);
     params.Physics = Sanitize(params.Physics);
+    params.Records = Sanitize(params.Records);
+    params.Graph = Sanitize(params.Graph);
+    params.Evolution = Sanitize(params.Evolution);
+    params.TestBench = Sanitize(params.TestBench);
     return params;
 }
 
