@@ -14,6 +14,8 @@ set(SOURCES
     lim/player.cpp
     lim/shape_grammar.cpp
     lim/body.cpp
+    lim/formula_params.cpp
+    lim/world_decoder.cpp
     lim/level.cpp
     lim/sandbox_screen.cpp
     lim/game.cpp)
@@ -70,7 +72,8 @@ tkit_register_for_reflection(lost-in-memory SOURCES
     lim/player_params.hpp
     lim/shell_params.hpp
     lim/shape_params.hpp
-    lim/form_params.hpp)
+    lim/form_params.hpp
+    lim/formula_params.hpp)
 tkit_configure_compile_link_options(lost-in-memory NO_EXCEPTIONS NO_RTTI)
 target_compile_definitions(lost-in-memory PRIVATE LIM_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
 embed_assets(
