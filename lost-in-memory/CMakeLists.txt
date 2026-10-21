@@ -16,6 +16,8 @@ set(SOURCES
     lim/body.cpp
     lim/formula_params.cpp
     lim/world_decoder.cpp
+    lim/convex_hull.cpp
+    lim/section_graph.cpp
     lim/level.cpp
     lim/sandbox_screen.cpp
     lim/game.cpp)
