@@ -1,6 +1,8 @@
 #pragma once
 
 #include "lim/alias.hpp"
+#include "lim/capacity.hpp"
+#include "lim/param_schema.hpp"
 
 #include "tkit/reflection/reflect.hpp"
 
@@ -39,12 +41,159 @@ struct ShapeParams
     f32 SmoothTorusMinorRadius = 0.3f;
 };
 
+template <> struct ParamSchema<ShapeParams>
+{
+    static constexpr TKit::FixedArray<ParamSpec<ShapeParams>, 28> FIELDS{{
+        {.Member = &ShapeParams::CarveChance,
+         .Hint = "Chance a spare primitive cuts into the core instead of attaching",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f,
+         .Drag = UNIT_SHARE},
+        {.Member = &ShapeParams::OpeningMargin,
+         .Hint = "Smallest opening as a multiple of the player diameter",
+         .Flags = BOTH_BOUNDS,
+         .Min = 1.f,
+         .Max = 4.f},
+        {.Member = &ShapeParams::HardBlendScale,
+         .Hint = "Blend radius multiplier for machined forms",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f},
+        {.Member = &ShapeParams::TrimChance,
+         .Hint = "Chance a trimmable core gets a trim piece",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f},
+        {.Member = &ShapeParams::MonolithWeight,
+         .Hint = "Pick weight of a solid monolith core",
+         .Flags = ParamSpecFlag_Min},
+        {.Member = &ShapeParams::PortalWeight,
+         .Hint = "Pick weight of a framed portal core",
+         .Flags = ParamSpecFlag_Min},
+        {.Member = &ShapeParams::RingWeight, .Hint = "Pick weight of a ring core", .Flags = ParamSpecFlag_Min},
+        {.Member = &ShapeParams::CageWeight, .Hint = "Pick weight of a lattice cage core", .Flags = ParamSpecFlag_Min},
+        {.Member = &ShapeParams::GateWeight,
+         .Hint = "Pick weight of a pillar and lintel gate core",
+         .Flags = ParamSpecFlag_Min},
+        {.Member = &ShapeParams::WallFraction,
+         .Hint = "Wall thickness and snapping step, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 0.5f},
+        {.Member = &ShapeParams::MinSpanFraction,
+         .Hint = "Shortest core span, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::MaxSpanFraction,
+         .Hint = "Longest core span, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::MinDepthFraction,
+         .Hint = "Thinnest core depth, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::MaxDepthFraction,
+         .Hint = "Thickest core depth, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::MinWindowFraction,
+         .Hint = "Narrowest opening, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::MaxWindowFraction,
+         .Hint = "Widest opening, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::AttachmentReach,
+         .Hint = "Farthest an attachment sits from the core, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::NotchFraction,
+         .Hint = "Deepest notch in a core edge, as a share of its extent",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 0.45f},
+        {.Member = &ShapeParams::GrooveDepthFraction,
+         .Hint = "Groove depth as a share of the core depth",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 0.5f},
+        {.Member = &ShapeParams::SmoothSpread,
+         .Hint = "How far blob primitives scatter from the centre, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothSphereRadius,
+         .Hint = "Sphere radius, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothBoxHalfWidth,
+         .Hint = "Box half width, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothBoxHalfHeight,
+         .Hint = "Box half height, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothBoxHalfDepth,
+         .Hint = "Box half depth, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothCapsuleRadius,
+         .Hint = "Capsule radius, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothCapsuleHalfLength,
+         .Hint = "Capsule half length, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothTorusMajorRadius,
+         .Hint = "Torus ring radius, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+        {.Member = &ShapeParams::SmoothTorusMinorRadius,
+         .Hint = "Torus tube radius, as a fraction of size",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.05f,
+         .Max = 2.f},
+    }};
+
+    static constexpr TKit::FixedArray<OrderedPair<ShapeParams>, 3> PAIRS{{
+        {&ShapeParams::MinSpanFraction, &ShapeParams::MaxSpanFraction},
+        {&ShapeParams::MinDepthFraction, &ShapeParams::MaxDepthFraction},
+        {&ShapeParams::MinWindowFraction, &ShapeParams::MaxWindowFraction},
+    }};
+};
+
 struct ShapeLookParams
 {
     TKIT_REFLECT_DECLARE(ShapeLookParams)
     u32 MeshResolution = 24;
 };
 
-[[nodiscard]] ShapeParams Sanitize(ShapeParams params);
-[[nodiscard]] ShapeLookParams Sanitize(ShapeLookParams params);
+template <> struct ParamSchema<ShapeLookParams>
+{
+    static constexpr ParamSpec<ShapeLookParams> MESH_RESOLUTION{.Member = &ShapeLookParams::MeshResolution,
+                                                                .Hint = "Grid cells per axis when meshing a blob form",
+                                                                .Flags = DRAGGED_BOUNDS,
+                                                                .Min = f32(MIN_MESH_RESOLUTION),
+                                                                .Max = f32(MAX_MESH_RESOLUTION),
+                                                                .Drag = FINE_INTEGER};
+    static constexpr TKit::FixedArray<ParamSpec<ShapeLookParams>, 1> FIELDS{MESH_RESOLUTION};
+};
 } // namespace Lim

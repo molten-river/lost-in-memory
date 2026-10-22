@@ -31,7 +31,6 @@ struct NoiseOctave
     u32 Seed;
 };
 
-constexpr f32 MIN_RADIUS = 4.f;
 constexpr u32 MAX_VALENCE = 6;
 constexpr u32 MAX_WALK_STEPS = 64;
 constexpr f32 MAX_SHEAR = 0.12f;
@@ -507,24 +506,5 @@ f32 Shell::GetMinRadius() const
 f32v3 Shell::GetTriangleCenter(const u32 triangle) const
 {
     return m_Centers[triangle];
-}
-
-ShellParams Sanitize(ShellParams params)
-{
-    params.Radius = TKit::Math::Max(params.Radius, MIN_RADIUS);
-    params.Subdivisions = TKit::Math::Min(params.Subdivisions, MAX_SUBDIVISIONS);
-    params.LethalDensity = TKit::Math::Clamp(params.LethalDensity, 0.f, 1.f);
-    return params;
-}
-
-ShellMotionParams Sanitize(ShellMotionParams params)
-{
-    params.WaveAmplitude = TKit::Math::Max(params.WaveAmplitude, 0.f);
-    params.NoiseAmplitude = TKit::Math::Max(params.NoiseAmplitude, 0.f);
-    params.NoiseSpeed = TKit::Math::Max(params.NoiseSpeed, 0.f);
-    params.NoiseScale = TKit::Math::Max(params.NoiseScale, 0.f);
-    params.TangentialShare = TKit::Math::Clamp(params.TangentialShare, 0.f, 1.f);
-    params.FacetTintStrength = TKit::Math::Max(params.FacetTintStrength, 0.f);
-    return params;
 }
 } // namespace Lim

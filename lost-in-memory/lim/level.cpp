@@ -1,5 +1,4 @@
 #include "lim/level.hpp"
-#include "lim/capacity.hpp"
 
 #include "lim/convex_hull.hpp"
 #include "lim/world_decoder.hpp"
@@ -16,11 +15,6 @@ using Onyx::D3;
 
 namespace
 {
-constexpr f32 MAX_WAVE_AMPLITUDE_FRACTION = 0.4f;
-constexpr f32 MAX_FORM_SIZE_FRACTION = 0.25f;
-constexpr f32 MIN_FORM_SIZE = 0.1f;
-constexpr f32 MIN_DENSITY = 1e-3f;
-constexpr u32 MAX_SUBSTEPS = 8;
 constexpr u32 MAX_SPAWN_ATTEMPTS = 8;
 constexpr f32 SHELL_CONTACT_EPSILON = 0.05f;
 constexpr u32 GRAPH_VERTICES_PER_RECORD = 3 * SectionGraph::MAX_CELLS * ConvexHull::MAX_TRIANGLES;
@@ -33,31 +27,6 @@ struct RecordDrift
     f32 MaxSpeed;
     f32 TumbleSpeed;
 };
-
-[[nodiscard]] LevelParams FitToShell(LevelParams params)
-{
-    const f32 radius = params.Mechanics.Shell.Radius;
-    const f32 maxAmplitude = MAX_WAVE_AMPLITUDE_FRACTION * radius;
-    ShellMotionParams &motion = params.LookFeel.ShellMotion;
-    motion.WaveAmplitude = TKit::Math::Min(motion.WaveAmplitude, maxAmplitude);
-    motion.NoiseAmplitude = TKit::Math::Min(motion.NoiseAmplitude, maxAmplitude);
-
-    const f32 maxSize = MAX_FORM_SIZE_FRACTION * radius;
-    MechanicsParams &mechanics = params.Mechanics;
-    mechanics.Enemies.MinSize = TKit::Math::Min(mechanics.Enemies.MinSize, maxSize);
-    mechanics.Enemies.MaxSize = TKit::Math::Min(mechanics.Enemies.MaxSize, maxSize);
-    mechanics.Solids.MinSize = TKit::Math::Min(mechanics.Solids.MinSize, maxSize);
-    mechanics.Solids.MaxSize = TKit::Math::Min(mechanics.Solids.MaxSize, maxSize);
-    mechanics.Goal.Size = TKit::Math::Min(mechanics.Goal.Size, maxSize);
-
-    RecordParams &records = mechanics.Records;
-    records.EnemySizeMin = TKit::Math::Min(records.EnemySizeMin, maxSize);
-    records.EnemySizeMax = TKit::Math::Min(records.EnemySizeMax, maxSize);
-    records.SolidSizeMin = TKit::Math::Min(records.SolidSizeMin, maxSize);
-    records.SolidSizeMax = TKit::Math::Min(records.SolidSizeMax, maxSize);
-    records.GoalSize = TKit::Math::Min(records.GoalSize, maxSize);
-    return params;
-}
 
 [[nodiscard]] f32 ComputeMinOpening(const LevelParams &params)
 {
@@ -94,32 +63,6 @@ struct RecordDrift
                        .TumbleSpeed = mechanics.Enemies.TumbleSpeed};
 }
 
-template <typename T> void OrderPair(T &first, T &second)
-{
-    const T low = TKit::Math::Min(first, second);
-    const T high = TKit::Math::Max(first, second);
-    first = low;
-    second = high;
-}
-
-template <typename CrowdParams> [[nodiscard]] CrowdParams SanitizeCrowd(CrowdParams crowd, const u32 maxCount)
-{
-    OrderPair(crowd.MinCount, crowd.MaxCount);
-    crowd.MaxCount = TKit::Math::Min(crowd.MaxCount, maxCount);
-    crowd.MinCount = TKit::Math::Min(crowd.MinCount, crowd.MaxCount);
-    OrderPair(crowd.MinSize, crowd.MaxSize);
-    crowd.MinSize = TKit::Math::Max(crowd.MinSize, MIN_FORM_SIZE);
-    crowd.MaxSize = TKit::Math::Max(crowd.MaxSize, MIN_FORM_SIZE);
-    OrderPair(crowd.MinPrimitives, crowd.MaxPrimitives);
-    crowd.MinPrimitives = TKit::Math::Clamp(crowd.MinPrimitives, 1U, MAX_PRIMITIVES);
-    crowd.MaxPrimitives = TKit::Math::Clamp(crowd.MaxPrimitives, 1U, MAX_PRIMITIVES);
-    crowd.BlendRadius = TKit::Math::Max(crowd.BlendRadius, 0.f);
-    OrderPair(crowd.MinDriftSpeed, crowd.MaxDriftSpeed);
-    crowd.MinDriftSpeed = TKit::Math::Max(crowd.MinDriftSpeed, 0.f);
-    crowd.MaxDriftSpeed = TKit::Math::Max(crowd.MaxDriftSpeed, 0.f);
-    crowd.TumbleSpeed = TKit::Math::Max(crowd.TumbleSpeed, 0.f);
-    return crowd;
-}
 } // namespace
 
 Level::Level()
@@ -136,9 +79,8 @@ Level::~Level()
     Onyx::Resources::DestroyDynamicMesh<D3>(m_GraphMesh);
 }
 
-void Level::Generate(const Region &region, const LevelParams &requested, const PlayMode mode)
+void Level::Generate(const Region &region, const LevelParams &params, const PlayMode mode)
 {
-    const LevelParams params = FitToShell(Sanitize(requested));
     const Palette &colors = params.LookFeel.Colors;
     const ShellParams &shell = params.Mechanics.Shell;
 
@@ -577,42 +519,5 @@ Level::Outcome Level::DetectOutcome(const f32v3 &position, const f32 radius) con
     if (panel == Shell::Panel::Lethal)
         return Outcome::Died;
     return panel == Shell::Panel::Goal ? Outcome::Won : outcome;
-}
-
-EnemyParams Sanitize(const EnemyParams params)
-{
-    return SanitizeCrowd(params, MAX_ENEMIES);
-}
-
-SolidParams Sanitize(const SolidParams params)
-{
-    return SanitizeCrowd(params, MAX_SOLIDS);
-}
-
-GoalParams Sanitize(GoalParams params)
-{
-    params.ShellChance = TKit::Math::Clamp(params.ShellChance, 0.f, 1.f);
-    params.Size = TKit::Math::Max(params.Size, MIN_FORM_SIZE);
-    params.DriftSpeed = TKit::Math::Max(params.DriftSpeed, 0.f);
-    params.MinSpawnDistance = TKit::Math::Max(params.MinSpawnDistance, 0.f);
-    OrderPair(params.MinPrimitives, params.MaxPrimitives);
-    params.MinPrimitives = TKit::Math::Clamp(params.MinPrimitives, 1U, MAX_PRIMITIVES);
-    params.MaxPrimitives = TKit::Math::Clamp(params.MaxPrimitives, 1U, MAX_PRIMITIVES);
-    return params;
-}
-
-PhysicsParams Sanitize(PhysicsParams params)
-{
-    params.Restitution = TKit::Math::Clamp(params.Restitution, 0.f, 1.f);
-    params.Density = TKit::Math::Max(params.Density, MIN_DENSITY);
-    params.AngularDamping = TKit::Math::Clamp(params.AngularDamping, 0.f, 1.f);
-    params.Substeps = TKit::Math::Clamp(params.Substeps, 1U, MAX_SUBSTEPS);
-    params.WallMargin = TKit::Math::Max(params.WallMargin, 0.f);
-    OrderPair(params.MinTumbleScale, params.MaxTumbleScale);
-    params.MinTumbleScale = TKit::Math::Max(params.MinTumbleScale, 0.f);
-    params.MaxTumbleScale = TKit::Math::Max(params.MaxTumbleScale, 0.f);
-    params.MinSafeSpawnRadius = TKit::Math::Max(params.MinSafeSpawnRadius, 0.f);
-    params.SafeSpawnFraction = TKit::Math::Clamp(params.SafeSpawnFraction, 0.f, 1.f);
-    return params;
 }
 } // namespace Lim

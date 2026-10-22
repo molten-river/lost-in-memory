@@ -1,16 +1,11 @@
 #include "lim/level_params.hpp"
+#include "lim/params_reflection.hpp"
 
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/static_array.hpp"
 #include "tkit/container/tier_array.hpp"
 #include "tkit/math/math.hpp"
-#include "tkit/reflection/lim/form_params.hpp"
-#include "tkit/reflection/lim/formula_params.hpp"
-#include "tkit/reflection/lim/level_params.hpp"
-#include "tkit/reflection/lim/palette.hpp"
-#include "tkit/reflection/lim/player_params.hpp"
-#include "tkit/reflection/lim/shape_params.hpp"
-#include "tkit/reflection/lim/shell_params.hpp"
+#include "tkit/utils/debug.hpp"
 #include "tkit/utils/logging.hpp"
 
 #include <charconv>
@@ -19,6 +14,8 @@
 #include <fstream>
 #include <iterator>
 #include <type_traits>
+#include <utility>
+#include <variant>
 
 namespace Lim
 {
@@ -35,6 +32,8 @@ constexpr usize INDENT_WIDTH = 2;
 constexpr usize NUMBER_BUFFER_SIZE = 32;
 constexpr usize MAX_NESTING_DEPTH = 4;
 constexpr usize COLOR_HEX_DIGITS = 6;
+constexpr f32 MAX_WAVE_AMPLITUDE_FRACTION = 0.4f;
+constexpr f32 MAX_FORM_SIZE_FRACTION = 0.25f;
 constexpr char COMMENT_MARKER = '#';
 constexpr char KEY_VALUE_SEPARATOR = ':';
 constexpr char LINE_BREAK = '\n';
@@ -224,41 +223,114 @@ void Decode(LevelParams &params, const TKit::StringView text)
         start = end + 1;
     }
 }
+
+template <typename Value, typename Params> bool OrderMembers(Params &params, const OrderedPair<Params> &pair)
+{
+    const auto *const low = std::get_if<Value Params::*>(&pair.Low);
+    const auto *const high = std::get_if<Value Params::*>(&pair.High);
+    if (!low || !high)
+        return false;
+
+    Value &first = params.*(*low);
+    Value &second = params.*(*high);
+    if (first <= second)
+        return false;
+    second = std::exchange(first, second);
+    return true;
+}
+
+template <typename Value, typename Params> bool ClampMember(Params &params, const ParamSpec<Params> &spec)
+{
+    const auto *const member = std::get_if<Value Params::*>(&spec.Member);
+    if (!member)
+        return false;
+
+    Value &target = params.*(*member);
+    Value bounded = target;
+    if (spec.Flags & ParamSpecFlag_Min)
+        bounded = TKit::Math::Max(bounded, Value(spec.Min));
+    if (spec.Flags & ParamSpecFlag_Max)
+        bounded = TKit::Math::Min(bounded, Value(spec.Max));
+    const bool changed = bounded != target;
+    target = bounded;
+    return changed;
+}
+
+/// Orders each pair, then clamps each bounded field, innermost structs first; reports whether any field changed.
+template <typename Params> bool ApplySchema(Params &params)
+{
+    bool changed = false;
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
+        using Type = TKIT_REFLECT_FIELD_TYPE(field);
+        if constexpr (TKit::Reflect<Type>::Implemented)
+            changed = ApplySchema(field.Get(params)) || changed;
+    });
+    if constexpr (HasParamPairs<Params>)
+        for (const OrderedPair<Params> &pair : ParamSchema<Params>::PAIRS)
+            changed = OrderMembers<f32>(params, pair) || OrderMembers<u32>(params, pair) || changed;
+    if constexpr (HasParamFields<Params>)
+        for (const ParamSpec<Params> &spec : ParamSchema<Params>::FIELDS)
+            changed = ClampMember<f32>(params, spec) || ClampMember<u32>(params, spec) || changed;
+    return changed;
+}
+
+void FitToRadius(LevelParams &params)
+{
+    const f32 radius = params.Mechanics.Shell.Radius;
+    const f32 maxAmplitude = MAX_WAVE_AMPLITUDE_FRACTION * radius;
+    ShellMotionParams &motion = params.LookFeel.ShellMotion;
+    motion.WaveAmplitude = TKit::Math::Min(motion.WaveAmplitude, maxAmplitude);
+    motion.NoiseAmplitude = TKit::Math::Min(motion.NoiseAmplitude, maxAmplitude);
+
+    const f32 maxSize = MAX_FORM_SIZE_FRACTION * radius;
+    MechanicsParams &mechanics = params.Mechanics;
+    mechanics.Enemies.MinSize = TKit::Math::Min(mechanics.Enemies.MinSize, maxSize);
+    mechanics.Enemies.MaxSize = TKit::Math::Min(mechanics.Enemies.MaxSize, maxSize);
+    mechanics.Solids.MinSize = TKit::Math::Min(mechanics.Solids.MinSize, maxSize);
+    mechanics.Solids.MaxSize = TKit::Math::Min(mechanics.Solids.MaxSize, maxSize);
+    mechanics.Goal.Size = TKit::Math::Min(mechanics.Goal.Size, maxSize);
+
+    RecordParams &records = mechanics.Records;
+    records.EnemySizeMin = TKit::Math::Min(records.EnemySizeMin, maxSize);
+    records.EnemySizeMax = TKit::Math::Min(records.EnemySizeMax, maxSize);
+    records.SolidSizeMin = TKit::Math::Min(records.SolidSizeMin, maxSize);
+    records.SolidSizeMax = TKit::Math::Min(records.SolidSizeMax, maxSize);
+    records.GoalSize = TKit::Math::Min(records.GoalSize, maxSize);
+}
+
+/// Colors have no constexpr constructor, so the defaults cannot be checked at compile time.
+template <typename Params> [[nodiscard]] bool AreDefaultsWithinSchema()
+{
+    Params defaults{};
+    return !ApplySchema(defaults);
+}
+
+/// Every reflected leaf has exactly one spec, no spec names anything else, and each pair holds two fields of one type.
+template <typename Params> [[nodiscard]] constexpr bool IsSchemaSound()
+{
+    u32 leaves = 0;
+    bool sound = true;
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
+        using Type = TKIT_REFLECT_FIELD_TYPE(field);
+        if constexpr (TKit::Reflect<Type>::Implemented)
+            sound = sound && IsSchemaSound<Type>();
+        else
+        {
+            ++leaves;
+            sound = sound && CountSpecs(field.Pointer) == 1;
+        }
+    });
+    if constexpr (HasParamPairs<Params>)
+        for (const OrderedPair<Params> &pair : ParamSchema<Params>::PAIRS)
+            sound = sound && pair.Low.index() == pair.High.index();
+    if constexpr (HasParamFields<Params>)
+        return sound && leaves == ParamSchema<Params>::FIELDS.GetSize();
+    else
+        return sound && leaves == 0;
+}
+
+static_assert(IsSchemaSound<LevelParams>(), "Every tuning field needs exactly one ParamSpec in its struct's schema");
 } // namespace
-
-LightParams Sanitize(LightParams params)
-{
-    params.AmbientIntensity = TKit::Math::Max(params.AmbientIntensity, 0.f);
-    params.CoreIntensity = TKit::Math::Max(params.CoreIntensity, 0.f);
-    params.CoreRadiusScale = TKit::Math::Max(params.CoreRadiusScale, 0.01f);
-    return params;
-}
-
-LookFeelParams Sanitize(LookFeelParams params)
-{
-    params.ShellMotion = Sanitize(params.ShellMotion);
-    params.Shapes = Sanitize(params.Shapes);
-    params.Player = Sanitize(params.Player);
-    params.Light = Sanitize(params.Light);
-    params.FadeSeconds = TKit::Math::Max(params.FadeSeconds, 0.01f);
-    params.TextSize = TKit::Math::Max(params.TextSize, 1.f);
-    return params;
-}
-
-MechanicsParams Sanitize(MechanicsParams params)
-{
-    params.Shell = Sanitize(params.Shell);
-    params.Shapes = Sanitize(params.Shapes);
-    params.Enemies = Sanitize(params.Enemies);
-    params.Solids = Sanitize(params.Solids);
-    params.Goal = Sanitize(params.Goal);
-    params.Physics = Sanitize(params.Physics);
-    params.Records = Sanitize(params.Records);
-    params.Graph = Sanitize(params.Graph);
-    params.Evolution = Sanitize(params.Evolution);
-    params.TestBench = Sanitize(params.TestBench);
-    return params;
-}
 
 LevelParams LoadLevelParams()
 {
@@ -299,8 +371,10 @@ bool SaveLevelParams(const LevelParams &params)
 
 LevelParams Sanitize(LevelParams params)
 {
-    params.LookFeel = Sanitize(params.LookFeel);
-    params.Mechanics = Sanitize(params.Mechanics);
+    TKIT_ASSERT(AreDefaultsWithinSchema<LevelParams>(),
+                "[LIM][LEVEL_PARAMS] A default breaks its pair order or bounds");
+    ApplySchema(params);
+    FitToRadius(params);
     return params;
 }
 } // namespace Lim

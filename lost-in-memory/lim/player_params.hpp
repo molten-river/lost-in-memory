@@ -1,8 +1,8 @@
 #pragma once
 
 #include "lim/alias.hpp"
+#include "lim/param_schema.hpp"
 
-#include "tkit/math/math.hpp"
 #include "tkit/reflection/reflect.hpp"
 
 namespace Lim
@@ -18,14 +18,24 @@ struct PlayerParams
     f32 RollSpeed = 2.f;
 };
 
-[[nodiscard]] inline PlayerParams Sanitize(PlayerParams params)
+template <> struct ParamSchema<PlayerParams>
 {
-    params.Radius = TKit::Math::Max(params.Radius, 0.05f);
-    params.Thrust = TKit::Math::Max(params.Thrust, 0.f);
-    params.MaxSpeed = TKit::Math::Max(params.MaxSpeed, 0.f);
-    params.VelocityKeptPerSecond = TKit::Math::Clamp(params.VelocityKeptPerSecond, 0.f, 1.f);
-    params.MouseRadiansPerPixel = TKit::Math::Max(params.MouseRadiansPerPixel, 0.f);
-    params.RollSpeed = TKit::Math::Max(params.RollSpeed, 0.f);
-    return params;
-}
+    static constexpr TKit::FixedArray<ParamSpec<PlayerParams>, 6> FIELDS{{
+        {.Member = &PlayerParams::Radius,
+         .Hint = "Collision radius of the player",
+         .Flags = ParamSpecFlag_Min,
+         .Min = 0.05f},
+        {.Member = &PlayerParams::Thrust, .Hint = "Acceleration while a move key is held", .Flags = ParamSpecFlag_Min},
+        {.Member = &PlayerParams::MaxSpeed, .Hint = "Speed cap of the player", .Flags = ParamSpecFlag_Min},
+        {.Member = &PlayerParams::VelocityKeptPerSecond,
+         .Hint = "Share of velocity left after one second without thrust",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f},
+        {.Member = &PlayerParams::MouseRadiansPerPixel, .Hint = "Look sensitivity", .Flags = ParamSpecFlag_Min},
+        {.Member = &PlayerParams::RollSpeed,
+         .Hint = "Roll rate on Q and E, in radians per second",
+         .Flags = ParamSpecFlag_Min},
+    }};
+};
 } // namespace Lim

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lim/alias.hpp"
+#include "lim/param_schema.hpp"
 
 #include "onyx/color.hpp"
 
@@ -28,6 +29,28 @@ struct Palette
     Onyx::Color UiBorder = Onyx::Color::FromHexadecimal(0x3B4149, false);
     Onyx::Color UiText = Onyx::Color::FromHexadecimal(0xD9DEE4, false);
     Onyx::Color UiTextDim = Onyx::Color::FromHexadecimal(0x7E868F, false);
+};
+
+template <> struct ParamSchema<Palette>
+{
+    static constexpr TKit::FixedArray<ParamSpec<Palette>, 16> FIELDS{{
+        {.Member = &Palette::VoidBlack, .Hint = "Clear colour of the void around everything"},
+        {.Member = &Palette::Untinted, .Hint = "Neutral fill the shell and its plain panels start from"},
+        {.Member = &Palette::ShellTrough, .Hint = "Shell tint at the lowest displacement"},
+        {.Member = &Palette::ShellCrest, .Hint = "Shell tint at the highest displacement"},
+        {.Member = &Palette::EnemyPurple, .Hint = "Lethal tint at tint fraction 0, for enemies and lethal panels"},
+        {.Member = &Palette::EnemyRed, .Hint = "Lethal tint at tint fraction 1, for enemies and lethal panels"},
+        {.Member = &Palette::GoalGreen, .Hint = "Tint of the goal form or goal panel"},
+        {.Member = &Palette::SolidLow, .Hint = "Solid tint at tint fraction 0"},
+        {.Member = &Palette::SolidHigh, .Hint = "Solid tint at tint fraction 1"},
+        {.Member = &Palette::CoreLight, .Hint = "Colour of the point light at the centre"},
+        {.Member = &Palette::Ambient, .Hint = "Colour of the ambient light"},
+        {.Member = &Palette::UiBackground, .Hint = "Panel background"},
+        {.Member = &Palette::UiSurface, .Hint = "Widget fill"},
+        {.Member = &Palette::UiBorder, .Hint = "Borders, separators and buttons"},
+        {.Member = &Palette::UiText, .Hint = "Regular panel text"},
+        {.Member = &Palette::UiTextDim, .Hint = "Section titles, hints and hover tints"},
+    }};
 };
 
 [[nodiscard]] inline Onyx::Color Mix(const Onyx::Color &from, const Onyx::Color &to, const f32 t)

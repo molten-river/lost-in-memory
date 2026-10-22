@@ -14,7 +14,6 @@ set(SOURCES
     lim/player.cpp
     lim/shape_grammar.cpp
     lim/body.cpp
-    lim/formula_params.cpp
     lim/world_decoder.cpp
     lim/convex_hull.cpp
     lim/section_graph.cpp

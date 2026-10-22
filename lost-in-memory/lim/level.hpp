@@ -48,7 +48,7 @@ class Level
     Level(const Level &) = delete;
     Level &operator=(const Level &) = delete;
 
-    /// Replaces the level; its static meshes live in a pool that is destroyed and recreated on every call.
+    /// Replaces the level from sanitised params; its static meshes live in a pool recreated on every call.
     void Generate(const Region &region, const LevelParams &params, PlayMode mode);
     void Update(f32 deltaTime, Player &player);
     void Draw(Onyx::RenderContext<Onyx::D3> &context, f32 brightness) const;

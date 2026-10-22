@@ -12,14 +12,6 @@ namespace Lim
 {
 namespace
 {
-constexpr f32 MIN_FRACTION = 0.05f;
-constexpr f32 MAX_FRACTION = 2.f;
-constexpr f32 MAX_WALL_FRACTION = 0.5f;
-constexpr f32 MAX_NOTCH_FRACTION = 0.45f;
-constexpr f32 MAX_GROOVE_DEPTH_FRACTION = 0.5f;
-constexpr f32 MIN_OPENING_MARGIN = 1.f;
-constexpr f32 MAX_OPENING_MARGIN = 4.f;
-constexpr f32 MIN_SMOOTH_EXTENT = 0.05f;
 constexpr f32 MIN_WALL = 0.01f;
 constexpr f32 OPENING_SLACK = 0.02f;
 constexpr f32 MARCH_STEP = 0.02f;
@@ -91,14 +83,6 @@ struct Grammar
     TKit::StaticArray<Role, MAX_PRIMITIVES> Roles{};
     TKit::StaticArray<Opening, MAX_OPENINGS> Openings{};
 };
-
-void OrderFractions(f32 &min, f32 &max)
-{
-    const f32 low = TKit::Math::Clamp(TKit::Math::Min(min, max), MIN_FRACTION, MAX_FRACTION);
-    const f32 high = TKit::Math::Clamp(TKit::Math::Max(min, max), MIN_FRACTION, MAX_FRACTION);
-    min = low;
-    max = high;
-}
 
 [[nodiscard]] f32v3 SmoothExtent(const ShapeParams &params, const BlobPrimitive::Shape shape)
 {
@@ -631,41 +615,5 @@ ShapeRecipe DecodeShape(ByteReader &reader, const ShapeRequest &request, const S
     if (!request.Carved)
         return DecodeSmooth(reader, request, params);
     return DecodeCarved(reader, request, params);
-}
-
-ShapeParams Sanitize(ShapeParams params)
-{
-    params.CarveChance = TKit::Math::Clamp(params.CarveChance, 0.f, 1.f);
-    params.OpeningMargin = TKit::Math::Clamp(params.OpeningMargin, MIN_OPENING_MARGIN, MAX_OPENING_MARGIN);
-    params.HardBlendScale = TKit::Math::Clamp(params.HardBlendScale, 0.f, 1.f);
-    params.TrimChance = TKit::Math::Clamp(params.TrimChance, 0.f, 1.f);
-    params.MonolithWeight = TKit::Math::Max(params.MonolithWeight, 0.f);
-    params.PortalWeight = TKit::Math::Max(params.PortalWeight, 0.f);
-    params.RingWeight = TKit::Math::Max(params.RingWeight, 0.f);
-    params.CageWeight = TKit::Math::Max(params.CageWeight, 0.f);
-    params.GateWeight = TKit::Math::Max(params.GateWeight, 0.f);
-    params.WallFraction = TKit::Math::Clamp(params.WallFraction, MIN_FRACTION, MAX_WALL_FRACTION);
-    OrderFractions(params.MinSpanFraction, params.MaxSpanFraction);
-    OrderFractions(params.MinDepthFraction, params.MaxDepthFraction);
-    OrderFractions(params.MinWindowFraction, params.MaxWindowFraction);
-    params.AttachmentReach = TKit::Math::Clamp(params.AttachmentReach, 0.f, MAX_FRACTION);
-    params.NotchFraction = TKit::Math::Clamp(params.NotchFraction, 0.f, MAX_NOTCH_FRACTION);
-    params.GrooveDepthFraction = TKit::Math::Clamp(params.GrooveDepthFraction, 0.f, MAX_GROOVE_DEPTH_FRACTION);
-    params.SmoothSpread = TKit::Math::Clamp(params.SmoothSpread, 0.f, MAX_FRACTION);
-    params.SmoothSphereRadius = TKit::Math::Clamp(params.SmoothSphereRadius, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothBoxHalfWidth = TKit::Math::Clamp(params.SmoothBoxHalfWidth, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothBoxHalfHeight = TKit::Math::Clamp(params.SmoothBoxHalfHeight, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothBoxHalfDepth = TKit::Math::Clamp(params.SmoothBoxHalfDepth, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothCapsuleRadius = TKit::Math::Clamp(params.SmoothCapsuleRadius, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothCapsuleHalfLength = TKit::Math::Clamp(params.SmoothCapsuleHalfLength, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothTorusMajorRadius = TKit::Math::Clamp(params.SmoothTorusMajorRadius, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    params.SmoothTorusMinorRadius = TKit::Math::Clamp(params.SmoothTorusMinorRadius, MIN_SMOOTH_EXTENT, MAX_FRACTION);
-    return params;
-}
-
-ShapeLookParams Sanitize(ShapeLookParams params)
-{
-    params.MeshResolution = TKit::Math::Clamp(params.MeshResolution, MIN_MESH_RESOLUTION, MAX_MESH_RESOLUTION);
-    return params;
 }
 } // namespace Lim
