@@ -22,6 +22,7 @@
 #include "tkit/container/dynamic_array.hpp"
 #include "tkit/math/tensor.hpp"
 #include "tkit/memory/ptr.hpp"
+#include "tkit/utils/optional.hpp"
 
 namespace Lim
 {
@@ -41,13 +42,14 @@ class Level
         Died
     };
 
-    /// Creates the one static-mesh pool, never recreated because Onyx reuses pool ids, and the graph-body mesh.
+    /// Registers the material and the graph-body mesh; the static-mesh pool is created by Generate.
     Level();
     ~Level();
 
     Level(const Level &) = delete;
     Level &operator=(const Level &) = delete;
 
+    /// Replaces the level; its static meshes live in a pool that is destroyed and recreated on every call.
     void Generate(const Region &region, const LevelParams &params, PlayMode mode);
     void Update(f32 deltaTime, Player &player);
     void Draw(Onyx::RenderContext<Onyx::D3> &context, f32 brightness) const;
@@ -73,6 +75,7 @@ class Level
         f32 TumbleSpeed;
     };
 
+    void ReplaceMeshPool();
     void DecodeLethalPanels(ByteReader &reader, f32 density, const Palette &colors);
     void DecodeGoal(ByteReader &reader, const LevelParams &params);
     void PlaceShellGoal(ByteReader &reader, const Onyx::Color &tint);
@@ -96,7 +99,7 @@ class Level
 
     Shell m_Shell;
     Onyx::Resource m_Material;
-    const Onyx::ResourcePool m_Pool;
+    TKit::Optional<Onyx::ResourcePool> m_Pool{};
     Onyx::Resource m_GraphMesh;
     TKit::DynamicArray<Form> m_Forms{};
     TKit::Scope<Body::Pieces> m_Pieces;

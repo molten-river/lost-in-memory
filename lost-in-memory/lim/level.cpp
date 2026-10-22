@@ -123,7 +123,6 @@ template <typename CrowdParams> [[nodiscard]] CrowdParams SanitizeCrowd(CrowdPar
 
 Level::Level()
     : m_Material(Onyx::Resources::RegisterMaterial<D3>()),
-      m_Pool(Onyx::Resources::CreateResourcePool<D3>(Onyx::Resource_StaticMesh)),
       m_GraphMesh(Onyx::Resources::RegisterDynamicMesh<D3>().Handle), m_Pieces(TKit::Scope<Body::Pieces>::Create()),
       m_PieceOffsets(TKit::Scope<Body::PieceOffsets>::Create()), m_World(TKit::Scope<WorldRecipe>::Create())
 {
@@ -142,9 +141,8 @@ void Level::Generate(const Region &region, const LevelParams &requested, const P
     const Palette &colors = params.LookFeel.Colors;
     const ShellParams &shell = params.Mechanics.Shell;
 
-    m_Forms.Clear();
+    ReplaceMeshPool();
     m_Forms.Reserve(MAX_BODIES);
-    Onyx::Resources::Sync(Onyx::SyncFlag_StaticMeshes);
 
     m_Mode = mode;
     m_Time = 0.f;
@@ -262,6 +260,16 @@ Level::Outcome Level::GetOutcome() const
     return m_Outcome;
 }
 
+/// Drops every form first, then idles the GPU and flushes all contexts before the old meshes are destroyed.
+void Level::ReplaceMeshPool()
+{
+    m_Forms.Clear();
+    Onyx::Resources::Sync(Onyx::SyncFlag_StaticMeshes);
+    if (m_Pool)
+        Onyx::Resources::DestroyResourcePool<D3>(*m_Pool);
+    m_Pool = Onyx::Resources::CreateResourcePool<D3>(Onyx::Resource_StaticMesh);
+}
+
 void Level::DecodeLethalPanels(ByteReader &reader, const f32 density, const Palette &colors)
 {
     for (u32 triangle = 0; triangle < m_Shell.GetTriangleCount(); ++triangle)
@@ -345,7 +353,7 @@ void Level::SpawnForm(ByteReader &reader, const FormSpec &spec, const LevelParam
 
     const PhysicsParams &physics = params.Mechanics.Physics;
     const ShapeRecipe recipe = DecodeShape(reader, spec.Shape, params.Mechanics.Shapes);
-    Blob shape(m_Pool, recipe.Primitives, recipe.BlendRadius, params.LookFeel.Shapes.MeshResolution);
+    Blob shape(*m_Pool, recipe.Primitives, recipe.BlendRadius, params.LookFeel.Shapes.MeshResolution);
     if (onGrid)
     {
         Form &form = m_Forms.Append(Form{.RigidBody = Body(std::move(shape), ComputeGridMotion(cell), physics.Density),
