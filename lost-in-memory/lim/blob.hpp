@@ -1,6 +1,7 @@
 #pragma once
 
 #include "lim/alias.hpp"
+#include "lim/capacity.hpp"
 #include "onyx/context.hpp"
 #include "onyx/handle.hpp"
 #include "onyx/math.hpp"
@@ -48,10 +49,7 @@ struct BlobPrimitive
 class Blob
 {
   public:
-    static constexpr u32 MAX_PRIMITIVES = 10;
     static constexpr u32 MAX_SAMPLE_POINTS = 128;
-    static constexpr u32 MIN_MESH_RESOLUTION = 12;
-    static constexpr u32 MAX_MESH_RESOLUTION = 48;
 
     Blob(Onyx::ResourcePool pool, TKit::Span<const BlobPrimitive> primitives, f32 blendRadius, u32 meshResolution);
 

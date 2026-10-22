@@ -1,4 +1,5 @@
 #include "lim/shell.hpp"
+#include "lim/capacity.hpp"
 
 #include "onyx/resources.hpp"
 #include "tkit/container/fixed_array.hpp"
@@ -30,7 +31,6 @@ struct NoiseOctave
     u32 Seed;
 };
 
-constexpr u32 MAX_SUBDIVISIONS = 5;
 constexpr f32 MIN_RADIUS = 4.f;
 constexpr u32 MAX_VALENCE = 6;
 constexpr u32 MAX_WALK_STEPS = 64;

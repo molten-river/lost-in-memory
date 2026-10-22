@@ -1,4 +1,5 @@
 #include "lim/shape_grammar.hpp"
+#include "lim/capacity.hpp"
 
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/math/math.hpp"
@@ -35,7 +36,7 @@ constexpr u32 QUADRANTS = 4;
 constexpr u32 AXIS_X = 0;
 constexpr u32 AXIS_Y = 1;
 constexpr u32 AXIS_Z = 2;
-constexpr u32 MAX_OPENINGS = Blob::MAX_PRIMITIVES;
+constexpr u32 MAX_OPENINGS = MAX_PRIMITIVES;
 
 using FaceFlags = u8;
 enum FaceFlagBit : FaceFlags
@@ -87,7 +88,7 @@ struct Grammar
     f32 Wall;
     f32 Clearance;
     ShapeRecipe Recipe;
-    TKit::StaticArray<Role, Blob::MAX_PRIMITIVES> Roles{};
+    TKit::StaticArray<Role, MAX_PRIMITIVES> Roles{};
     TKit::StaticArray<Opening, MAX_OPENINGS> Openings{};
 };
 
@@ -118,7 +119,7 @@ void OrderFractions(f32 &min, f32 &max)
 {
     ShapeRecipe recipe{.Primitives = {}, .BlendRadius = request.BlendRadius};
     const u32 count =
-        TKit::Math::Clamp(reader.NextCount(request.MinPrimitives, request.MaxPrimitives), 1U, Blob::MAX_PRIMITIVES);
+        TKit::Math::Clamp(reader.NextCount(request.MinPrimitives, request.MaxPrimitives), 1U, MAX_PRIMITIVES);
     for (u32 i = 0; i < count; ++i)
     {
         const f32 size = reader.NextRange(request.MinSize, request.MaxSize);
@@ -547,7 +548,7 @@ void Add(Grammar &grammar, const BlobPrimitive &primitive, const Role role)
 
 [[nodiscard]] bool RemoveNearestOrnament(Grammar &grammar, const f32v3 &point)
 {
-    TKit::StaticArray<BlobPrimitive, Blob::MAX_PRIMITIVES> &primitives = grammar.Recipe.Primitives;
+    TKit::StaticArray<BlobPrimitive, MAX_PRIMITIVES> &primitives = grammar.Recipe.Primitives;
     TKit::Optional<u32> nearest = TKit::Optional<u32>::None();
     f32 nearestDistance = TKIT_F32_MAX;
     for (u32 i = 0; i < primitives.GetSize(); ++i)
@@ -571,7 +572,7 @@ void Add(Grammar &grammar, const BlobPrimitive &primitive, const Role role)
 
 void SecurePassages(Grammar &grammar, const f32 required)
 {
-    for (u32 attempt = 0; attempt < Blob::MAX_PRIMITIVES; ++attempt)
+    for (u32 attempt = 0; attempt < MAX_PRIMITIVES; ++attempt)
     {
         const TKit::Optional<f32v3> blockage = FindBlockage(grammar, required);
         if (!blockage)
@@ -585,7 +586,7 @@ void SecurePassages(Grammar &grammar, const f32 required)
 [[nodiscard]] ShapeRecipe DecodeCarved(ByteReader &reader, const ShapeRequest &request, const ShapeParams &params)
 {
     const u32 budget =
-        TKit::Math::Clamp(reader.NextCount(request.MinPrimitives, request.MaxPrimitives), 1U, Blob::MAX_PRIMITIVES);
+        TKit::Math::Clamp(reader.NextCount(request.MinPrimitives, request.MaxPrimitives), 1U, MAX_PRIMITIVES);
     const f32 size = reader.NextRange(request.MinSize, request.MaxSize);
     const f32 blendRadius = TKit::Math::Max(request.BlendRadius, 0.f) * params.HardBlendScale;
     const f32 required = 0.5f * TKit::Math::Max(request.MinOpening, 0.f);
@@ -606,8 +607,8 @@ void SecurePassages(Grammar &grammar, const f32 required)
         --remaining;
     }
 
-    TKit::StaticArray<BlobPrimitive, Blob::MAX_PRIMITIVES> attachments{};
-    TKit::StaticArray<BlobPrimitive, Blob::MAX_PRIMITIVES> carves{};
+    TKit::StaticArray<BlobPrimitive, MAX_PRIMITIVES> attachments{};
+    TKit::StaticArray<BlobPrimitive, MAX_PRIMITIVES> carves{};
     for (u32 i = 0; i < remaining; ++i)
     {
         if (massing.Carvable && reader.NextChance(params.CarveChance))
@@ -664,8 +665,7 @@ ShapeParams Sanitize(ShapeParams params)
 
 ShapeLookParams Sanitize(ShapeLookParams params)
 {
-    params.MeshResolution =
-        TKit::Math::Clamp(params.MeshResolution, Blob::MIN_MESH_RESOLUTION, Blob::MAX_MESH_RESOLUTION);
+    params.MeshResolution = TKit::Math::Clamp(params.MeshResolution, MIN_MESH_RESOLUTION, MAX_MESH_RESOLUTION);
     return params;
 }
 } // namespace Lim

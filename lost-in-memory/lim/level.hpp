@@ -3,6 +3,7 @@
 #include "lim/alias.hpp"
 #include "lim/body.hpp"
 #include "lim/byte_reader.hpp"
+#include "lim/capacity.hpp"
 #include "lim/form_params.hpp"
 #include "lim/form_recipe.hpp"
 #include "lim/formula_params.hpp"
@@ -30,8 +31,6 @@ namespace Lim
 class Level
 {
   public:
-    static constexpr u32 MAX_ENEMIES = 30;
-    static constexpr u32 MAX_SOLIDS = 12;
     static constexpr u32 MAX_FORMS = MAX_ENEMIES + MAX_SOLIDS + 1;
     static constexpr u32 MAX_BODIES = u32(RECORD_COUNT) * SectionGraph::MAX_SECTIONS;
 

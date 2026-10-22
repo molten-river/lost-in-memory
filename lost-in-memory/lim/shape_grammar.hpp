@@ -3,6 +3,7 @@
 #include "lim/alias.hpp"
 #include "lim/blob.hpp"
 #include "lim/byte_reader.hpp"
+#include "lim/capacity.hpp"
 #include "lim/shape_params.hpp"
 
 #include "tkit/container/static_array.hpp"
@@ -23,7 +24,7 @@ struct ShapeRequest
 
 struct ShapeRecipe
 {
-    TKit::StaticArray<BlobPrimitive, Blob::MAX_PRIMITIVES> Primitives;
+    TKit::StaticArray<BlobPrimitive, MAX_PRIMITIVES> Primitives;
     f32 BlendRadius;
 };
 

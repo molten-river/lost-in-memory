@@ -1,4 +1,5 @@
 #include "lim/level.hpp"
+#include "lim/capacity.hpp"
 
 #include "lim/convex_hull.hpp"
 #include "lim/world_decoder.hpp"
@@ -110,8 +111,8 @@ template <typename CrowdParams> [[nodiscard]] CrowdParams SanitizeCrowd(CrowdPar
     crowd.MinSize = TKit::Math::Max(crowd.MinSize, MIN_FORM_SIZE);
     crowd.MaxSize = TKit::Math::Max(crowd.MaxSize, MIN_FORM_SIZE);
     OrderPair(crowd.MinPrimitives, crowd.MaxPrimitives);
-    crowd.MinPrimitives = TKit::Math::Clamp(crowd.MinPrimitives, 1U, Blob::MAX_PRIMITIVES);
-    crowd.MaxPrimitives = TKit::Math::Clamp(crowd.MaxPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    crowd.MinPrimitives = TKit::Math::Clamp(crowd.MinPrimitives, 1U, MAX_PRIMITIVES);
+    crowd.MaxPrimitives = TKit::Math::Clamp(crowd.MaxPrimitives, 1U, MAX_PRIMITIVES);
     crowd.BlendRadius = TKit::Math::Max(crowd.BlendRadius, 0.f);
     OrderPair(crowd.MinDriftSpeed, crowd.MaxDriftSpeed);
     crowd.MinDriftSpeed = TKit::Math::Max(crowd.MinDriftSpeed, 0.f);
@@ -580,12 +581,12 @@ Level::Outcome Level::DetectOutcome(const f32v3 &position, const f32 radius) con
 
 EnemyParams Sanitize(const EnemyParams params)
 {
-    return SanitizeCrowd(params, Level::MAX_ENEMIES);
+    return SanitizeCrowd(params, MAX_ENEMIES);
 }
 
 SolidParams Sanitize(const SolidParams params)
 {
-    return SanitizeCrowd(params, Level::MAX_SOLIDS);
+    return SanitizeCrowd(params, MAX_SOLIDS);
 }
 
 GoalParams Sanitize(GoalParams params)
@@ -595,8 +596,8 @@ GoalParams Sanitize(GoalParams params)
     params.DriftSpeed = TKit::Math::Max(params.DriftSpeed, 0.f);
     params.MinSpawnDistance = TKit::Math::Max(params.MinSpawnDistance, 0.f);
     OrderPair(params.MinPrimitives, params.MaxPrimitives);
-    params.MinPrimitives = TKit::Math::Clamp(params.MinPrimitives, 1U, Blob::MAX_PRIMITIVES);
-    params.MaxPrimitives = TKit::Math::Clamp(params.MaxPrimitives, 1U, Blob::MAX_PRIMITIVES);
+    params.MinPrimitives = TKit::Math::Clamp(params.MinPrimitives, 1U, MAX_PRIMITIVES);
+    params.MaxPrimitives = TKit::Math::Clamp(params.MaxPrimitives, 1U, MAX_PRIMITIVES);
     return params;
 }
 
