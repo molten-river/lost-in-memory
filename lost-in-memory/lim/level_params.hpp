@@ -45,7 +45,11 @@ struct LightParams
 template <> struct ParamSchema<LightParams>
 {
     static constexpr TKit::FixedArray<ParamSpec<LightParams>, 3> FIELDS{{
-        {.Member = &LightParams::AmbientIntensity, .Hint = "Strength of the ambient light", .Flags = ParamSpecFlag_Min},
+        {.Member = &LightParams::AmbientIntensity,
+         .Hint = "Strength of the ambient light; Onyx clamps it at 1",
+         .Flags = BOTH_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f},
         {.Member = &LightParams::CoreIntensity,
          .Hint = "Strength of the point light at the centre",
          .Flags = ParamSpecFlag_Min},
