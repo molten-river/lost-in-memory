@@ -109,12 +109,12 @@ static_assert(AreTabsKnown(), "Every tab must name a struct member of ViewerPara
     return params;
 }
 
-/// Floats at the right edge of the primary monitor, above the fullscreen scene, without taking its focus.
+/// Floats top-right over the scene without taking focus; presents without vsync, so hiding it never stalls the loop.
 [[nodiscard]] Onyx::WindowSpecs MakeToolWindowSpecs()
 {
     Onyx::WindowSpecs specs{.Title = TOOL_WINDOW_TITLE,
                             .Dimensions = TOOL_WINDOW_SIZE,
-                            .PresentMode = Onyx::PresentMode_VSync,
+                            .PresentMode = Onyx::PresentMode_Immediate,
                             .Flags = TOOL_WINDOW_FLAGS};
     const TKit::Optional<u32v2> screen = GetMainScreenSize();
     if (!screen)
@@ -188,7 +188,6 @@ void Viewer::Run()
         const TKit::Timespan panel = stage.Restart();
 
         Onyx::SetTargetDeltaTime(m_Window, TKit::Timespan{});
-        Onyx::SetTargetDeltaTime(m_ToolWindow, TKit::Timespan{});
         Onyx::Transfer();
         Onyx::Render();
         m_Timings.Record(FrameTimings::Sample{.Frame = m_FrameClock.Restart(),
