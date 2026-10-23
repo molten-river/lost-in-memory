@@ -50,6 +50,8 @@ constexpr f32 MATERIAL_ROUGHNESS = 0.9f;
 constexpr f32v3 LIGHT_DIRECTION{-0.45f, -0.8f, -0.4f};
 constexpr f32 LIGHT_EXTENT = 5000.f;
 
+constexpr f32 SHAPES_SETTLE_SECONDS = 0.1f;
+
 constexpr f32 SCALE_STEP = 2.f;
 constexpr f32 SCRUB_SECONDS = 0.5f;
 
@@ -60,7 +62,7 @@ constexpr TKit::FixedArray<PanelTab, 4> TABS{{
     {"Shapes", "Shape kit"},
 }};
 
-constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"APPLY", "NEW REGION"};
+constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"SAME BYTES", "NEW REGION"};
 
 /// Whether a reflected top-level member of Params is itself a struct, named name.
 template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKit::StringView name)
@@ -80,6 +82,20 @@ template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKi
         if (!IsStructMember<ViewerParams>(tab.Field))
             return false;
     return true;
+}
+
+/// Whether every reflected leaf of the two structs holds the same value.
+template <typename Params> [[nodiscard]] bool AreParamsEqual(const Params &left, const Params &right)
+{
+    bool equal = true;
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
+        using Type = TKIT_REFLECT_FIELD_TYPE(field);
+        if constexpr (TKit::Reflect<Type>::Implemented)
+            equal = equal && AreParamsEqual(field.Get(left), field.Get(right));
+        else
+            equal = equal && field.Get(left) == field.Get(right);
+    });
+    return equal;
 }
 
 static_assert(IsSchemaSound<ViewerParams>(), "Every viewer tuning field needs exactly one ParamSpec in its schema");
@@ -137,8 +153,9 @@ void Viewer::Run()
         return;
     }
     m_Gallery.Bake(*region, m_Params.Shapes);
+    MarkShapesBaked();
     Home();
-    RefreshCursor();
+    SetCameraActive(true);
     m_FrameClock.Restart();
 
     while (Onyx::Running())
@@ -148,8 +165,10 @@ void Viewer::Run()
             Rebuild(*m_PendingRebake);
             m_PendingRebake = TKit::Optional<Rebake>::None();
         }
+        SettleShapes();
         if (IsKeyDown(Onyx::Key_Escape) || m_Window->ShouldClose() || m_ToolWindow->ShouldClose())
             Onyx::Quit(Onyx::QuitFlag_DestroyWindows);
+        HandleSceneEvents();
         HandleKeys();
 
         const f32 deltaTime = TKit::Math::Min(Onyx::GetDeltaTime(m_Window).AsSeconds(), MAX_FRAME_SECONDS);
@@ -178,6 +197,7 @@ void Viewer::Run()
                                               .Panel = panel,
                                               .Render = stage.Restart()});
     }
+    Persist();
 }
 
 /// Frames everything the gallery shows from a fixed three-quarter angle, then hands the pose to the active camera.
@@ -199,16 +219,36 @@ CameraFrame Viewer::MakeCameraFrame(const f32 deltaTime) const
                        .Params = m_Params.Camera,
                        .Focus = m_Gallery.GetFocus(m_Params.Gallery),
                        .DeltaTime = deltaTime,
-                       .AcceptsInput = m_CameraActive};
+                       .AcceptsInput = m_CameraActive && !m_AwaitingClickRelease};
 }
 
-/// Locks the scene window's cursor exactly while the camera takes input, so a free cursor can reach the tool window.
-void Viewer::RefreshCursor()
+/// Locks the scene cursor exactly while the camera takes input; a free cursor can reach the tool window.
+void Viewer::SetCameraActive(const bool active)
 {
+    m_CameraActive = active;
     GLFWwindow *const handle = m_Window->GetHandle();
-    glfwSetInputMode(handle, GLFW_CURSOR, m_CameraActive ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(handle, GLFW_CURSOR, active ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     if (glfwRawMouseMotionSupported())
-        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, m_CameraActive ? GLFW_TRUE : GLFW_FALSE);
+        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, active ? GLFW_TRUE : GLFW_FALSE);
+}
+
+/// Losing focus or changing size releases the lock; a left click in the scene takes it again.
+void Viewer::HandleSceneEvents()
+{
+    for (const Onyx::Event &event : m_Window->GetNewEvents())
+    {
+        const bool lost = event.Type == Onyx::Event_WindowUnfocused || event.Type == Onyx::Event_WindowResized;
+        const bool clicked = event.Type == Onyx::Event_MousePressed && event.Mouse.Button == Onyx::Mouse_Button1;
+        if (lost && m_CameraActive)
+            SetCameraActive(false);
+        else if (clicked && !m_CameraActive)
+        {
+            SetCameraActive(true);
+            m_AwaitingClickRelease = true;
+        }
+    }
+    if (!m_Window->IsMousePressed(Onyx::Mouse_ButtonLeft))
+        m_AwaitingClickRelease = false;
 }
 
 /// GLFW reports a key only to the focused window, so a hotkey counts when either window holds it.
@@ -223,8 +263,8 @@ void Viewer::HandleKeys()
     static constexpr TKit::FixedArray<KeyBinding, KEY_BINDING_COUNT> BINDINGS{{
         {Onyx::Key_Tab,
          [](Viewer &viewer) {
-             viewer.m_CameraActive = !viewer.m_CameraActive;
-             viewer.RefreshCursor();
+             const bool focused = (viewer.m_Window->GetFlags() & Onyx::WindowFlag_Focused) != 0;
+             viewer.SetCameraActive(!viewer.m_CameraActive && focused);
          }},
         {Onyx::Key_G,
          [](Viewer &viewer) {
@@ -257,26 +297,63 @@ void Viewer::HandleKeys()
     }
 }
 
-/// Resets the params on request, sanitizes and saves them, then rebakes from the kept bytes or a fresh capture.
+/// Rebakes once the shape kit params have stayed unchanged for a moment, so a drag rebakes once it settles.
+void Viewer::SettleShapes()
+{
+    if (!AreParamsEqual(m_Params.Shapes, m_SeenShapes))
+    {
+        m_SeenShapes = m_Params.Shapes;
+        m_ShapesSettle.Restart();
+        return;
+    }
+    if (AreParamsEqual(m_Params.Shapes, m_BakedShapes) ||
+        m_ShapesSettle.GetElapsed().AsSeconds() < SHAPES_SETTLE_SECONDS)
+        return;
+
+    ApplySchema(m_Params);
+    m_Gallery.Rebake(m_Params.Shapes);
+    MarkShapesBaked();
+}
+
+/// Resets the params on request, then saves them and rebakes from the kept bytes or a fresh capture.
 void Viewer::Rebuild(const Rebake rebake)
 {
     if (rebake == Rebake::ResetParams)
         m_Params = ViewerParams{};
-    ApplySchema(m_Params);
-    if (!SaveParams(LIM_SHAPES_DEFAULTS_PATH, m_Params))
-        TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the viewer params to defaults.yaml");
+    Persist();
 
     if (rebake == Rebake::NewRegion)
     {
         const TKit::Optional<Region> fresh = Region::Capture(Region::Filter::NonZero);
         if (fresh)
-        {
             m_Gallery.Bake(*fresh, m_Params.Shapes);
-            return;
+        else
+        {
+            TKIT_LOG_ERROR("[LIM][VIEWER] Could not capture a new memory region, keeping 0x{:016X}",
+                           m_Gallery.GetSource());
+            m_Gallery.Rebake(m_Params.Shapes);
         }
-        TKIT_LOG_ERROR("[LIM][VIEWER] Could not capture a new memory region, keeping 0x{:016X}", m_Gallery.GetSource());
     }
-    m_Gallery.Rebake(m_Params.Shapes);
+    else
+        m_Gallery.Rebake(m_Params.Shapes);
+
+    if (rebake == Rebake::SameBytes)
+        m_Clock.Reset();
+    MarkShapesBaked();
+}
+
+void Viewer::MarkShapesBaked()
+{
+    m_BakedShapes = m_Params.Shapes;
+    m_SeenShapes = m_Params.Shapes;
+}
+
+/// Sanitizes the params and writes them to defaults.yaml.
+void Viewer::Persist()
+{
+    ApplySchema(m_Params);
+    if (!SaveParams(LIM_SHAPES_DEFAULTS_PATH, m_Params))
+        TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the viewer params to defaults.yaml");
 }
 
 void Viewer::DrawScene()

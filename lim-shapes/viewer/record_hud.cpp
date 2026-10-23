@@ -19,9 +19,9 @@ constexpr u32 NIBBLE_MASK = 0x0F;
 constexpr usize RESERVED_FIRST_BYTE = RecordGallery::TAG_BYTE + 1;
 constexpr usize PLACEMENT_FIRST_BYTE = WALK_MASS_SIZE_BYTE + 1;
 
-constexpr TKit::StringView CAPTION = "LOOK, CAMERA AND GALLERY ARE LIVE; SHAPE KIT CHANGES REBAKE ON APPLY\n"
-                                     "TAB CURSOR  G GRID  LEFT RIGHT SELECT  O CAMERA  R REGION  ESC QUIT\n"
-                                     "P PAUSE  [ ] SPEED  , . SCRUB  BACKSPACE RESET\n"
+constexpr TKit::StringView CAPTION = "EDITS APPLY LIVE; SHAPE KIT REBAKES WHEN EDITS PAUSE; SAVED ON QUIT\n"
+                                     "CLICK SCENE TO FLY  TAB RELEASE  G GRID  LEFT RIGHT SELECT  O CAMERA\n"
+                                     "P PAUSE  [ ] SPEED  , . SCRUB  BACKSPACE TIME 0  R REGION  ESC QUIT\n"
                                      "FLY: MOUSE WASD SPACE CTRL Q E   ORBIT: LEFT DRAG, W S";
 
 static_assert(RESERVED_FIRST_BYTE < WALK_MASS_SIZE_BYTE && PLACEMENT_FIRST_BYTE < WALK_MASS_SECTIONS_BYTE,

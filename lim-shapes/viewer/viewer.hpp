@@ -54,10 +54,14 @@ class Viewer
     void Home();
     void EngageCamera();
     [[nodiscard]] CameraFrame MakeCameraFrame(f32 deltaTime) const;
-    void RefreshCursor();
+    void SetCameraActive(bool active);
+    void HandleSceneEvents();
     [[nodiscard]] bool IsKeyDown(Onyx::Key key) const;
     void HandleKeys();
+    void SettleShapes();
     void Rebuild(Rebake rebake);
+    void MarkShapesBaked();
+    void Persist();
     void DrawScene();
     [[nodiscard]] TKit::Optional<Rebake> DrawPanel();
 
@@ -81,6 +85,10 @@ class Viewer
     CameraRegistry::Kind m_CameraKind = CameraRegistry::Kind::Fly;
     TKit::Optional<Rebake> m_PendingRebake{};
     TKit::FixedArray<bool, KEY_BINDING_COUNT> m_KeyWasPressed{};
-    bool m_CameraActive = true;
+    ShapeKitParams m_BakedShapes{};
+    ShapeKitParams m_SeenShapes{};
+    TKit::Clock m_ShapesSettle{};
+    bool m_CameraActive = false;
+    bool m_AwaitingClickRelease = false;
 };
 } // namespace Lim
