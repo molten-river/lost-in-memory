@@ -270,8 +270,8 @@ void Viewer::HandleKeys()
              viewer.m_Gallery.ToggleMode();
              viewer.Home();
          }},
-        {Onyx::Key_Left, [](Viewer &viewer) { viewer.m_Gallery.MoveSelection(-1); }},
-        {Onyx::Key_Right, [](Viewer &viewer) { viewer.m_Gallery.MoveSelection(1); }},
+        {Onyx::Key_Left, [](Viewer &viewer) { viewer.StepSelection(-1); }},
+        {Onyx::Key_Right, [](Viewer &viewer) { viewer.StepSelection(1); }},
         {Onyx::Key_O,
          [](Viewer &viewer) {
              viewer.m_CameraKind = CameraRegistry::Kind((u32(viewer.m_CameraKind) + 1) % CameraRegistry::KIND_COUNT);
@@ -294,6 +294,13 @@ void Viewer::HandleKeys()
         if (triggered)
             BINDINGS[i].Command(*this);
     }
+}
+
+/// Moving onto another grid page frames that page, as G does; moves within a page keep the camera.
+void Viewer::StepSelection(const i32 offset)
+{
+    if (m_Gallery.MoveSelection(offset, m_Params.Gallery))
+        Home();
 }
 
 /// Rebakes once the shape kit params have stayed unchanged for a moment, so a drag rebakes once it settles.
@@ -384,11 +391,14 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
     {
         const u32 record = m_Gallery.GetSelection();
         const FrameTimings::Line timings = m_Timings.Describe();
+        const RecordGallery::Page page = m_Gallery.GetPage(m_Params.Gallery);
         m_Hud.Draw(m_Panel, RecordHud::Readout{.Record = record,
                                                .Bytes = m_Gallery.GetRecord(record),
                                                .Source = m_Gallery.GetSource(),
                                                .GalleryMode = m_Gallery.GetModeName(),
                                                .CameraMode = m_Cameras.Get(m_CameraKind).GetName(),
+                                               .Page = page.Index,
+                                               .PageCount = page.Count,
                                                .Seconds = m_Clock.GetSeconds(),
                                                .TimeScale = m_Clock.GetScale(),
                                                .Paused = m_Clock.IsPaused(),

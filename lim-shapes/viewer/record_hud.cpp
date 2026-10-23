@@ -68,8 +68,9 @@ void RecordHud::Draw(ParamPanel &panel, const Readout &readout) const
 
     const TKit::FixedArray<Line, LINE_COUNT> lines{
         Line::Format("SOURCE 0x{:016X} +0x{:03X}", readout.Source, offset),
-        Line::Format("{} / {}  TIME {:.2f} S  x{:g}  {}", readout.GalleryMode, readout.CameraMode, readout.Seconds,
-                     readout.TimeScale, readout.Paused ? "PAUSED" : "PLAYING"),
+        Line::Format("{} / {}  PAGE {}/{}  TIME {:.2f} S  x{:g}  {}", readout.GalleryMode, readout.CameraMode,
+                     readout.Page + 1, readout.PageCount, readout.Seconds, readout.TimeScale,
+                     readout.Paused ? "PAUSED" : "PLAYING"),
         Line::Format("{}", readout.Timings),
         Line::Format("TAG {:02X}  SIZE {:02X}  LATTICE {:02X}", ByteAt(bytes, RecordGallery::TAG_BYTE),
                      ByteAt(bytes, WALK_MASS_SIZE_BYTE), ByteAt(bytes, WALK_MASS_LATTICE_BYTE)),

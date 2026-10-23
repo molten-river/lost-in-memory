@@ -146,14 +146,21 @@ struct GalleryParams
 {
     TKIT_REFLECT_DECLARE(GalleryParams)
     u32 Columns = 9;
-    f32 Spacing = 12.f;
+    u32 Rows = 7;
+    f32 Spacing = 36.f;
 };
 
 template <> struct ParamSchema<GalleryParams>
 {
-    static constexpr TKit::FixedArray<ParamSpec<GalleryParams>, 2> FIELDS{{
+    static constexpr TKit::FixedArray<ParamSpec<GalleryParams>, 3> FIELDS{{
         {.Member = &GalleryParams::Columns,
-         .Hint = "Records per grid row",
+         .Hint = "Cells per grid row",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 1.f,
+         .Max = 63.f,
+         .Drag = GRID_CELLS},
+        {.Member = &GalleryParams::Rows,
+         .Hint = "Grid rows; when the cells hold fewer than 63 records, the grid shows the selection's page",
          .Flags = DRAGGED_BOUNDS,
          .Min = 1.f,
          .Max = 63.f,

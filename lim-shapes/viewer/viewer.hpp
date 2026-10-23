@@ -58,6 +58,7 @@ class Viewer
     void HandleSceneEvents();
     [[nodiscard]] bool IsKeyDown(Onyx::Key key) const;
     void HandleKeys();
+    void StepSelection(i32 offset);
     void SettleShapes();
     void Rebuild(Rebake rebake);
     void MarkShapesBaked();

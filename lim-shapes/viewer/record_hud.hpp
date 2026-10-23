@@ -20,6 +20,8 @@ class RecordHud
         u64 Source;
         TKit::StringView GalleryMode;
         TKit::StringView CameraMode;
+        u32 Page;
+        u32 PageCount;
         f32 Seconds;
         f32 TimeScale;
         bool Paused;

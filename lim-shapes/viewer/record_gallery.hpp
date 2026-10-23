@@ -32,18 +32,26 @@ class RecordGallery
         Single
     };
 
+    /// The page of the grid that holds the selection, counted from zero, out of Count pages.
+    struct Page
+    {
+        u32 Index;
+        u32 Count;
+    };
+
     /// Keeps a copy of the region, so later rebakes reuse the same bytes.
     void Bake(const Region &region, const ShapeKitParams &params);
     void Rebake(const ShapeKitParams &params);
     void ToggleMode();
-    /// Moves the selection by offset records, wrapping around both ends.
-    void MoveSelection(i32 offset);
+    /// Moves the selection by offset records, wrapping around; returns whether the grid now shows another page.
+    [[nodiscard]] bool MoveSelection(i32 offset, const GalleryParams &layout);
     /// Poses the visible shapes at absolute time seconds and writes them into the renderer.
     void Rewrite(ShapeRenderer &renderer, f32 seconds, const ViewerPalette &colors, const GalleryParams &layout);
 
     [[nodiscard]] CameraFocus GetFocus(const GalleryParams &layout) const;
-    /// A focus whose radius bounds everything the current mode shows.
+    /// A focus whose radius bounds everything the current mode shows: the selection's page or the selection alone.
     [[nodiscard]] CameraFocus GetSceneFocus(const GalleryParams &layout) const;
+    [[nodiscard]] Page GetPage(const GalleryParams &layout) const;
     [[nodiscard]] TKit::Span<const std::byte> GetRecord(u32 index) const;
     [[nodiscard]] u32 GetSelection() const;
     [[nodiscard]] u64 GetSource() const;
