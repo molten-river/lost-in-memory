@@ -13,6 +13,7 @@ set(SOURCES
     lim/section_graph.cpp
     lim/level.cpp
     lim/sandbox_screen.cpp
+    lim/game_visibility.cpp
     lim/game.cpp)
 
 add_executable(lost-in-memory ${SOURCES})
@@ -29,4 +30,4 @@ tkit_register_for_reflection(lost-in-memory SOURCES
 tkit_configure_compile_link_options(lost-in-memory NO_EXCEPTIONS NO_RTTI)
 target_compile_definitions(lost-in-memory PRIVATE LIM_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
 target_compile_definitions(lost-in-memory PRIVATE LIM_DEBUG_TOOLS=$<IF:$<CONFIG:Debug>,1,0>)
-target_link_libraries(lost-in-memory PRIVATE alias platform memory look shapes onyx glfw)
+target_link_libraries(lost-in-memory PRIVATE alias platform memory look tuning shapes onyx glfw)

@@ -1,11 +1,11 @@
 #pragma once
 
-#include "lim/alias.hpp"
-#include "lim/param_schema.hpp"
+#include "alias/alias.hpp"
+#include "look/ui_theme.hpp"
+#include "tuning/param_schema.hpp"
 
 #include "onyx/color.hpp"
 
-#include "tkit/math/math.hpp"
 #include "tkit/reflection/reflect.hpp"
 
 namespace Lim
@@ -53,11 +53,12 @@ template <> struct ParamSchema<Palette>
     }};
 };
 
-[[nodiscard]] inline Onyx::Color Mix(const Onyx::Color &from, const Onyx::Color &to, const f32 t)
+[[nodiscard]] inline UiTheme ToUiTheme(const Palette &palette)
 {
-    const f32 k = TKit::Math::Clamp(t, 0.f, 1.f);
-    const auto channel = [k](const f32 a, const f32 b) { return a + (b - a) * k; };
-    return Onyx::Color{channel(from.rgba[0], to.rgba[0]), channel(from.rgba[1], to.rgba[1]),
-                       channel(from.rgba[2], to.rgba[2]), channel(from.rgba[3], to.rgba[3])};
+    return UiTheme{.Background = palette.UiBackground,
+                   .Surface = palette.UiSurface,
+                   .Border = palette.UiBorder,
+                   .Text = palette.UiText,
+                   .TextDim = palette.UiTextDim};
 }
 } // namespace Lim

@@ -1,14 +1,10 @@
 #pragma once
 
-#include "lim/alias.hpp"
-#include "lim/font_library.hpp"
+#include "alias/alias.hpp"
 #include "lim/level_params.hpp"
 #include "lim/play_mode.hpp"
-
-#include "onyx/handle.hpp"
-#include "onyx/overlay.hpp"
-
-#include "tkit/utils/optional.hpp"
+#include "look/font_library.hpp"
+#include "tuning/param_panel.hpp"
 
 namespace Lim
 {
@@ -36,13 +32,9 @@ class SandboxScreen
     [[nodiscard]] Action Draw(LevelParams &params, PlayMode mode, Title title, u64 address, f32 opacity);
 
   private:
-    [[nodiscard]] Action DrawPanel(LevelParams &params, PlayMode mode, Title title, u64 address, f32 opacity);
-    void ApplyTheme(const LookFeelParams &lookFeel, f32 screenHeight, f32 alpha);
+    [[nodiscard]] Action DrawPanel(LevelParams &params, PlayMode mode, Title title, u64 address);
 
-    Onyx::Resource m_Font;
-    Onyx::Overlay *m_Overlay;
-    Onyx::OverlayStyleVariables m_Variables;
+    ParamPanel m_Panel;
     const LevelParams m_Defaults{};
-    TKit::Optional<f32v2> m_Size{};
 };
 } // namespace Lim

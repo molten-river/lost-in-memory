@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lim/alias.hpp"
-#include "lim/param_schema.hpp"
+#include "alias/alias.hpp"
+#include "tuning/param_schema.hpp"
 
 #include "tkit/reflection/reflect.hpp"
 

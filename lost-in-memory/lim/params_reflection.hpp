@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 
 #include "tkit/reflection/lim/form_params.hpp"
 #include "tkit/reflection/lim/formula_params.hpp"

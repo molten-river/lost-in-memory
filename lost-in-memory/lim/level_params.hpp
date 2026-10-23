@@ -1,13 +1,13 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/form_params.hpp"
 #include "lim/formula_params.hpp"
 #include "lim/palette.hpp"
-#include "lim/param_schema.hpp"
 #include "lim/player_params.hpp"
 #include "lim/shape_params.hpp"
 #include "lim/shell_params.hpp"
+#include "tuning/param_schema.hpp"
 
 #include "tkit/reflection/reflect.hpp"
 
