@@ -59,4 +59,7 @@ add_subdirectory(memory)
 add_subdirectory(look)
 add_subdirectory(tuning)
 add_subdirectory(shapes)
+tkit_register_for_reflection(shapes SOURCES
+    shapes/shape_kit_params.hpp
+    shapes/walk_mass_params.hpp)
 add_subdirectory(lost-in-memory)
