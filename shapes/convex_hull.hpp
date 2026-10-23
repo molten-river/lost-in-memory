@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"

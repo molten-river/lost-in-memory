@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/body.hpp"
-#include "lim/byte_reader.hpp"
+#include "memory/byte_reader.hpp"
 #include "lim/capacity.hpp"
 #include "lim/form_params.hpp"
 #include "lim/form_recipe.hpp"
@@ -11,7 +11,7 @@
 #include "lim/palette.hpp"
 #include "lim/play_mode.hpp"
 #include "lim/player.hpp"
-#include "lim/region.hpp"
+#include "memory/region.hpp"
 #include "lim/section_graph.hpp"
 #include "lim/shape_grammar.hpp"
 #include "lim/shell.hpp"

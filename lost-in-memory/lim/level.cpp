@@ -1,6 +1,6 @@
 #include "lim/level.hpp"
 
-#include "lim/convex_hull.hpp"
+#include "shapes/convex_hull.hpp"
 #include "lim/world_decoder.hpp"
 
 #include "onyx/resources.hpp"

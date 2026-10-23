@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/player_params.hpp"
 
 #include "onyx/camera.hpp"

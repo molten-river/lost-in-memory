@@ -1,12 +1,12 @@
 #pragma once
 
-#include "lim/alias.hpp"
-#include "lim/font_library.hpp"
+#include "alias/alias.hpp"
+#include "look/font_library.hpp"
 #include "lim/level.hpp"
 #include "lim/level_params.hpp"
 #include "lim/play_mode.hpp"
 #include "lim/player.hpp"
-#include "lim/region.hpp"
+#include "memory/region.hpp"
 #include "lim/sandbox_screen.hpp"
 
 #include "onyx/camera.hpp"

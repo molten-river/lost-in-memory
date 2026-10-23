@@ -1,5 +1,5 @@
-#include "lim/font_library.hpp"
-#include "lim/embedded_assets.hpp"
+#include "look/font_library.hpp"
+#include "look/embedded_assets.hpp"
 
 #include "onyx/font.hpp"
 #include "onyx/resources.hpp"

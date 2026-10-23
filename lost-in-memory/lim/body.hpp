@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/blob.hpp"
 #include "lim/form_recipe.hpp"
 #include "lim/formula_params.hpp"

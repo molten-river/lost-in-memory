@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/capacity.hpp"
 #include "onyx/context.hpp"
 #include "onyx/handle.hpp"

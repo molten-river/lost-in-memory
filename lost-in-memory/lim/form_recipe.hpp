@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/world_layout.hpp"
 
 #include "tkit/container/static_array.hpp"

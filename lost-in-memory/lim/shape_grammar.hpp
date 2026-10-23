@@ -1,8 +1,8 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/blob.hpp"
-#include "lim/byte_reader.hpp"
+#include "memory/byte_reader.hpp"
 #include "lim/capacity.hpp"
 #include "lim/shape_params.hpp"
 

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "lim/alias.hpp"
-#include "lim/convex_hull.hpp"
+#include "alias/alias.hpp"
+#include "shapes/convex_hull.hpp"
 #include "lim/form_recipe.hpp"
 #include "lim/formula_params.hpp"
 

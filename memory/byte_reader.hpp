@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "tkit/container/span.hpp"
 #include "tkit/math/quaternion.hpp"
 #include "tkit/math/tensor.hpp"

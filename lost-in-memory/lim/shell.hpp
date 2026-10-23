@@ -1,6 +1,6 @@
 #pragma once
 
-#include "lim/alias.hpp"
+#include "alias/alias.hpp"
 #include "lim/palette.hpp"
 #include "lim/shell_params.hpp"
 
