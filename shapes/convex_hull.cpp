@@ -15,6 +15,12 @@ constexpr f32 MIN_AREA_FRACTION = 1e-6f;
 constexpr f32 PLANE_MERGE_COSINE = 0.99f;
 constexpr f32 TETRAHEDRON_VOLUME_SHARE = 1.f / 6.f;
 constexpr f32v3 FALLBACK_NORMAL{0.f, 1.f, 0.f};
+constexpr f32 OVERLAP_SHRINK = 0.999f;
+constexpr f32 DEGENERATE_SQUARED = 1e-18f;
+constexpr u32 MAX_OVERLAP_ITERATIONS = 32;
+/// The faces through a tetrahedron's newest corner, each as its two other corners and the corner opposite it.
+constexpr TKit::FixedArray<TKit::FixedArray<u32, 3>, 3> TETRAHEDRON_FACES{
+    TKit::FixedArray<u32, 3>{1, 2, 3}, TKit::FixedArray<u32, 3>{2, 3, 1}, TKit::FixedArray<u32, 3>{3, 1, 2}};
 
 using Simplex = TKit::FixedArray<u8, SIMPLEX_CORNERS>;
 
@@ -191,6 +197,124 @@ void AddPoint(HullMesh &mesh, const TKit::Span<const f32v3> points, const u8 eye
     for (const Edge &edge : horizon)
         AddFace(mesh, points, edge.From, edge.To, eye);
 }
+
+/// Up to four Minkowski difference points, the newest first.
+struct SupportSimplex
+{
+    TKit::FixedArray<f32v3, SIMPLEX_CORNERS> Points{};
+    u32 Count = 0;
+};
+
+[[nodiscard]] f32v3 FindSupport(const ConvexHull &hull, const f32m4 &pose, const f32v3 &direction)
+{
+    const f32v3 local{TKit::Math::Dot(f32v3(pose[0]), direction), TKit::Math::Dot(f32v3(pose[1]), direction),
+                      TKit::Math::Dot(f32v3(pose[2]), direction)};
+    const TKit::Span<const f32v3> vertices = hull.GetVertices();
+    u32 best = 0;
+    f32 highest = TKit::Math::Dot(vertices[0], local);
+    for (u32 i = 1; i < vertices.GetSize(); ++i)
+    {
+        const f32 height = TKit::Math::Dot(vertices[i], local);
+        if (height > highest)
+        {
+            highest = height;
+            best = i;
+        }
+    }
+    const f32v3 shrunk = hull.GetCenter() + (vertices[best] - hull.GetCenter()) * OVERLAP_SHRINK;
+    return f32v3(pose * f32v4{shrunk, 1.f});
+}
+
+[[nodiscard]] bool IsDegenerate(const f32v3 &direction)
+{
+    return TKit::Math::NormSquared(direction) <= DEGENERATE_SQUARED;
+}
+
+/// Keeps the segment or its newest end, whichever faces the origin; a vanishing direction means the origin is on it.
+[[nodiscard]] bool RefineLine(SupportSimplex &simplex, f32v3 &direction)
+{
+    const f32v3 newest = simplex.Points[0];
+    const f32v3 edge = simplex.Points[1] - newest;
+    const f32v3 toOrigin = -newest;
+    if (TKit::Math::Dot(edge, toOrigin) > 0.f)
+    {
+        simplex.Count = 2;
+        direction = TKit::Math::Cross(TKit::Math::Cross(edge, toOrigin), edge);
+    }
+    else
+    {
+        simplex.Count = 1;
+        direction = toOrigin;
+    }
+    return IsDegenerate(direction);
+}
+
+[[nodiscard]] bool RefineTriangle(SupportSimplex &simplex, f32v3 &direction)
+{
+    const f32v3 newest = simplex.Points[0];
+    const f32v3 second = simplex.Points[1];
+    const f32v3 third = simplex.Points[2];
+    const f32v3 toSecond = second - newest;
+    const f32v3 toThird = third - newest;
+    const f32v3 toOrigin = -newest;
+    const f32v3 normal = TKit::Math::Cross(toSecond, toThird);
+
+    if (TKit::Math::Dot(TKit::Math::Cross(normal, toThird), toOrigin) > 0.f)
+    {
+        if (TKit::Math::Dot(toThird, toOrigin) > 0.f)
+        {
+            simplex.Points[1] = third;
+            simplex.Count = 2;
+            direction = TKit::Math::Cross(TKit::Math::Cross(toThird, toOrigin), toThird);
+            return IsDegenerate(direction);
+        }
+        return RefineLine(simplex, direction);
+    }
+    if (TKit::Math::Dot(TKit::Math::Cross(toSecond, normal), toOrigin) > 0.f)
+        return RefineLine(simplex, direction);
+
+    simplex.Count = 3;
+    if (TKit::Math::Dot(normal, toOrigin) > 0.f)
+        direction = normal;
+    else
+    {
+        simplex.Points[1] = third;
+        simplex.Points[2] = second;
+        direction = -normal;
+    }
+    return IsDegenerate(direction);
+}
+
+/// Each face normal is turned away from the corner opposite it, so the winding of the inputs never matters.
+[[nodiscard]] bool RefineTetrahedron(SupportSimplex &simplex, f32v3 &direction)
+{
+    const f32v3 newest = simplex.Points[0];
+    for (const TKit::FixedArray<u32, 3> &face : TETRAHEDRON_FACES)
+    {
+        const f32v3 second = simplex.Points[face[0]];
+        const f32v3 third = simplex.Points[face[1]];
+        const f32v3 opposite = simplex.Points[face[2]];
+        f32v3 normal = TKit::Math::Cross(second - newest, third - newest);
+        if (TKit::Math::Dot(normal, opposite - newest) > 0.f)
+            normal = -normal;
+        if (TKit::Math::Dot(normal, -newest) > 0.f)
+        {
+            simplex.Points = {newest, second, third, f32v3{0.f}};
+            simplex.Count = 3;
+            return RefineTriangle(simplex, direction);
+        }
+    }
+    return true;
+}
+
+[[nodiscard]] bool RefineSimplex(SupportSimplex &simplex, f32v3 &direction)
+{
+    if (simplex.Count == 2)
+        return RefineLine(simplex, direction);
+    if (simplex.Count == 3)
+        return RefineTriangle(simplex, direction);
+    return RefineTetrahedron(simplex, direction);
+}
 } // namespace
 
 void ConvexHull::Build(const TKit::Span<const f32v3> points)
@@ -200,7 +324,9 @@ void ConvexHull::Build(const TKit::Span<const f32v3> points)
     m_Vertices.Clear();
     m_Triangles.Clear();
     m_Planes.Clear();
+    m_Center = f32v3{0.f};
     m_Volume = 0.f;
+    m_Radius = 0.f;
     if (points.IsEmpty())
         return;
 
@@ -272,6 +398,12 @@ void ConvexHull::Build(const TKit::Span<const f32v3> points)
                                     .Plane = u8(plane)});
     }
     m_Volume = TKit::Math::Max(m_Volume, 0.f);
+
+    for (const f32v3 &vertex : m_Vertices)
+        m_Center += vertex;
+    m_Center = m_Center / f32(m_Vertices.GetSize());
+    for (const f32v3 &vertex : m_Vertices)
+        m_Radius = TKit::Math::Max(m_Radius, TKit::Math::Norm(vertex - m_Center));
 }
 
 f32 ConvexHull::Distance(const f32v3 &point) const
@@ -300,6 +432,39 @@ f32v3 ConvexHull::Gradient(const f32v3 &point) const
     return normal;
 }
 
+bool ConvexHull::IsOverlapping(const f32m4 &pose, const ConvexHull &other, const f32m4 &otherPose) const
+{
+    if (m_Vertices.IsEmpty() || other.m_Vertices.IsEmpty())
+        return false;
+
+    const auto findDifference = [&](const f32v3 &direction) {
+        return FindSupport(*this, pose, direction) - FindSupport(other, otherPose, -direction);
+    };
+    f32v3 direction = f32v3(pose * f32v4{m_Center, 1.f}) - f32v3(otherPose * f32v4{other.m_Center, 1.f});
+    if (IsDegenerate(direction))
+        direction = FALLBACK_NORMAL;
+
+    SupportSimplex simplex{};
+    simplex.Points[0] = findDifference(direction);
+    simplex.Count = 1;
+    direction = -simplex.Points[0];
+    for (u32 iteration = 0; iteration < MAX_OVERLAP_ITERATIONS; ++iteration)
+    {
+        if (IsDegenerate(direction))
+            return true;
+        const f32v3 point = findDifference(direction);
+        if (TKit::Math::Dot(point, direction) <= 0.f)
+            return false;
+        for (u32 i = simplex.Count; i > 0; --i)
+            simplex.Points[i] = simplex.Points[i - 1];
+        simplex.Points[0] = point;
+        ++simplex.Count;
+        if (RefineSimplex(simplex, direction))
+            return true;
+    }
+    return true;
+}
+
 f32 ConvexHull::GetVolume() const
 {
     return m_Volume;
@@ -308,5 +473,15 @@ f32 ConvexHull::GetVolume() const
 TKit::Span<const f32v3> ConvexHull::GetVertices() const
 {
     return m_Vertices;
+}
+
+const f32v3 &ConvexHull::GetCenter() const
+{
+    return m_Center;
+}
+
+f32 ConvexHull::GetRadius() const
+{
+    return m_Radius;
 }
 } // namespace Lim

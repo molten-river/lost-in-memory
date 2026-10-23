@@ -10,23 +10,30 @@ namespace Lim
 struct WalkMassParams
 {
     TKIT_REFLECT_DECLARE(WalkMassParams)
-    f32 SizeMin = 2.f;
-    f32 SizeMax = 6.f;
-    f32 LengthMin = 0.15f;
-    f32 LengthMax = 0.6f;
-    f32 WidthMin = 0.06f;
-    f32 WidthMax = 0.35f;
-    f32 HeightMin = 0.06f;
-    f32 HeightMax = 0.35f;
-    f32 ChamferMax = 0.6f;
-    f32 RollStepDegrees = 22.5f;
-    f32 TaperMin = 0.6f;
-    f32 LatticeStepMin = 0.05f;
-    f32 LatticeStepMax = 0.2f;
-    f32 OffsetShare = 0.5f;
-    f32 SlabDepth = 0.12f;
-    f32 PeriodMin = 2.f;
-    f32 PeriodMax = 24.f;
+    f32 SizeMin = 4.f;
+    f32 SizeMax = 9.f;
+    f32 LengthMin = 0.35f;
+    f32 LengthMax = 1.4f;
+    f32 BreadthMin = 0.5f;
+    f32 BreadthMax = 1.2f;
+    f32 ThicknessMin = 0.08f;
+    f32 ThicknessMax = 0.3f;
+    f32 PlinthBreadthMin = 0.9f;
+    f32 PlinthBreadthMax = 1.5f;
+    f32 PlinthThicknessMin = 0.15f;
+    f32 PlinthThicknessMax = 0.4f;
+    f32 MinBreadthShare = 0.5f;
+    f32 LengthToBreadthMax = 1.5f;
+    u32 MinMembers = 3;
+    f32 MinContactShare = 0.3f;
+    f32 ChamferMax = 0.25f;
+    f32 RollStepDegrees = 90.f;
+    f32 TaperMin = 0.7f;
+    f32 LatticeStepMin = 0.08f;
+    f32 LatticeStepMax = 0.25f;
+    f32 OffsetShare = 0.35f;
+    f32 PeriodMin = 3.f;
+    f32 PeriodMax = 30.f;
     f32 HoldMin = 0.25f;
     f32 HoldMax = 0.9f;
     f32 RatchetStepDegrees = 15.f;
@@ -40,7 +47,7 @@ template <> struct ParamSchema<WalkMassParams>
 {
     static constexpr DragStyle ANGLE_DEGREES{0.1f, ONE_DECIMAL_FORMAT};
 
-    static constexpr TKit::FixedArray<ParamSpec<WalkMassParams>, 24> FIELDS{{
+    static constexpr TKit::FixedArray<ParamSpec<WalkMassParams>, 31> FIELDS{{
         {.Member = &WalkMassParams::SizeMin,
          .Hint = "Mass size at size byte 0",
          .Flags = DRAGGED_BOUNDS,
@@ -54,41 +61,89 @@ template <> struct ParamSchema<WalkMassParams>
          .Max = 20.f,
          .Drag = FORM_SIZE},
         {.Member = &WalkMassParams::LengthMin,
-         .Hint = "Member length at length nibble 1 before snapping, as a fraction of size",
+         .Hint = "Member length at length nibble 1 before snapping and capping, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
          .Max = 3.f,
          .Drag = SIZE_FRACTION},
         {.Member = &WalkMassParams::LengthMax,
-         .Hint = "Member length at length nibble 15 before snapping, as a fraction of size",
+         .Hint = "Member length at length nibble 15 before snapping and capping, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
          .Max = 3.f,
          .Drag = SIZE_FRACTION},
-        {.Member = &WalkMassParams::WidthMin,
-         .Hint = "Section width at width nibble 0, as a fraction of size",
+        {.Member = &WalkMassParams::BreadthMin,
+         .Hint = "Plate breadth at breadth nibble 0, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
-         .Max = 1.f,
+         .Max = 3.f,
          .Drag = SIZE_FRACTION},
-        {.Member = &WalkMassParams::WidthMax,
-         .Hint = "Section width at width nibble 15, as a fraction of size",
+        {.Member = &WalkMassParams::BreadthMax,
+         .Hint = "Plate breadth at breadth nibble 15, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
-         .Max = 1.f,
+         .Max = 3.f,
          .Drag = SIZE_FRACTION},
-        {.Member = &WalkMassParams::HeightMin,
-         .Hint = "Section height at height nibble 0, as a fraction of size",
+        {.Member = &WalkMassParams::ThicknessMin,
+         .Hint = "Plate thickness at thickness nibble 0, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
-         .Max = 1.f,
+         .Max = 3.f,
          .Drag = SIZE_FRACTION},
-        {.Member = &WalkMassParams::HeightMax,
-         .Hint = "Section height at height nibble 15, as a fraction of size",
+        {.Member = &WalkMassParams::ThicknessMax,
+         .Hint = "Plate thickness at thickness nibble 15, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.01f,
-         .Max = 1.f,
+         .Max = 3.f,
          .Drag = SIZE_FRACTION},
+        {.Member = &WalkMassParams::PlinthBreadthMin,
+         .Hint = "Root plinth breadth at breadth nibble 0, as a fraction of size",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.01f,
+         .Max = 3.f,
+         .Drag = SIZE_FRACTION},
+        {.Member = &WalkMassParams::PlinthBreadthMax,
+         .Hint = "Root plinth breadth at breadth nibble 15, as a fraction of size",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.01f,
+         .Max = 3.f,
+         .Drag = SIZE_FRACTION},
+        {.Member = &WalkMassParams::PlinthThicknessMin,
+         .Hint = "Root plinth thickness at thickness nibble 0, as a fraction of size",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.01f,
+         .Max = 3.f,
+         .Drag = SIZE_FRACTION},
+        {.Member = &WalkMassParams::PlinthThicknessMax,
+         .Hint = "Root plinth thickness at thickness nibble 15, as a fraction of size",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.01f,
+         .Max = 3.f,
+         .Drag = SIZE_FRACTION},
+        {.Member = &WalkMassParams::MinBreadthShare,
+         .Hint = "Smallest member breadth, as a share of the plinth breadth",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.f,
+         .Max = 2.f,
+         .Drag = UNIT_SHARE},
+        {.Member = &WalkMassParams::LengthToBreadthMax,
+         .Hint = "Longest member, as a multiple of the narrower of its two faces' breadths",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.1f,
+         .Max = 10.f,
+         .Drag = SCALE_FACTOR},
+        {.Member = &WalkMassParams::MinMembers,
+         .Hint = "Members every mass keeps; shorter spines read a length nibble of 0 as one lattice step",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 1.f,
+         .Max = 7.f,
+         .Drag = FINE_INTEGER},
+        {.Member = &WalkMassParams::MinContactShare,
+         .Hint = "Share of a sheared member's start face that always stays on its parent",
+         .Flags = DRAGGED_BOUNDS,
+         .Min = 0.f,
+         .Max = 1.f,
+         .Drag = UNIT_SHARE},
         {.Member = &WalkMassParams::ChamferMax,
          .Hint = "Corner cut at chamfer level 3, as a share of half the thinner side",
          .Flags = DRAGGED_BOUNDS,
@@ -120,17 +175,11 @@ template <> struct ParamSchema<WalkMassParams>
          .Max = 1.f,
          .Drag = SIZE_FRACTION},
         {.Member = &WalkMassParams::OffsetShare,
-         .Hint = "Sideways joint shift of an offset section, as a share of the previous width",
+         .Hint = "Sideways joint shift of an offset section, as a share of the previous breadth",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.f,
          .Max = 0.5f,
          .Drag = UNIT_SHARE},
-        {.Member = &WalkMassParams::SlabDepth,
-         .Hint = "Thickness of the slab a mass without members becomes, as a fraction of size",
-         .Flags = DRAGGED_BOUNDS,
-         .Min = 0.01f,
-         .Max = 1.f,
-         .Drag = SIZE_FRACTION},
         {.Member = &WalkMassParams::PeriodMin,
          .Hint = "Motion cycle at period nibble 0, in seconds",
          .Flags = DRAGGED_BOUNDS,
@@ -180,18 +229,20 @@ template <> struct ParamSchema<WalkMassParams>
          .Max = 0.95f,
          .Drag = UNIT_SHARE},
         {.Member = &WalkMassParams::SlideReachMax,
-         .Hint = "Slide travel at amplitude 15, as a fraction of size",
+         .Hint = "Shear travel at amplitude 15 before the contact cap, as a fraction of size",
          .Flags = DRAGGED_BOUNDS,
          .Min = 0.f,
          .Max = 2.f,
          .Drag = SCALE_FACTOR},
     }};
 
-    static constexpr TKit::FixedArray<OrderedPair<WalkMassParams>, 7> PAIRS{{
+    static constexpr TKit::FixedArray<OrderedPair<WalkMassParams>, 9> PAIRS{{
         {&WalkMassParams::SizeMin, &WalkMassParams::SizeMax},
         {&WalkMassParams::LengthMin, &WalkMassParams::LengthMax},
-        {&WalkMassParams::WidthMin, &WalkMassParams::WidthMax},
-        {&WalkMassParams::HeightMin, &WalkMassParams::HeightMax},
+        {&WalkMassParams::BreadthMin, &WalkMassParams::BreadthMax},
+        {&WalkMassParams::ThicknessMin, &WalkMassParams::ThicknessMax},
+        {&WalkMassParams::PlinthBreadthMin, &WalkMassParams::PlinthBreadthMax},
+        {&WalkMassParams::PlinthThicknessMin, &WalkMassParams::PlinthThicknessMax},
         {&WalkMassParams::LatticeStepMin, &WalkMassParams::LatticeStepMax},
         {&WalkMassParams::PeriodMin, &WalkMassParams::PeriodMax},
         {&WalkMassParams::HoldMin, &WalkMassParams::HoldMax},

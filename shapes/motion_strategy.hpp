@@ -18,7 +18,7 @@ struct MotionTiming
     f32 Hold;
 };
 
-/// A joint's motion bytes, decoded but not yet scaled into reach, step and axis by the strategy.
+/// A joint's motion bytes, decoded but not yet scaled by the strategy; ShearReach caps travel along right and up.
 struct MotionSeed
 {
     MotionTiming Timing;
@@ -27,6 +27,7 @@ struct MotionSeed
     u8 AxisCode;
     f32 Length;
     f32 Size;
+    f32v2 ShearReach;
 };
 
 struct JointMotion
@@ -61,12 +62,11 @@ class MotionStrategy
     [[nodiscard]] virtual bool SplitsMember() const = 0;
 };
 
+/// The phase delays the first cycle, so every joint starts from its rest pose and the clock never runs below it.
 [[nodiscard]] inline CyclePosition LocateInCycle(const MotionTiming &timing, const f32 seconds)
 {
-    const f32 turns = seconds / timing.Period + timing.Phase;
-    f32 cycle = f32(i64(turns));
-    if (cycle > turns)
-        cycle -= 1.f;
+    const f32 turns = TKit::Math::Max(seconds / timing.Period - timing.Phase, 0.f);
+    const f32 cycle = f32(i64(turns));
     return CyclePosition{.Cycle = cycle, .Progress = turns - cycle};
 }
 

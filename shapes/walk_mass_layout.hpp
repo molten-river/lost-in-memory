@@ -38,8 +38,8 @@ inline constexpr u32 WALK_MASS_TURN_RIGHT = 5;
 inline constexpr u32 WALK_MASS_TURN_UP = 6;
 inline constexpr u32 WALK_MASS_TURN_DOWN = 7;
 
-inline constexpr u8 WALK_MASS_WIDTH_MASK = 0x0F;
-inline constexpr u8 WALK_MASS_HEIGHT_SHIFT = 4;
+inline constexpr u8 WALK_MASS_BREADTH_MASK = 0x0F;
+inline constexpr u8 WALK_MASS_THICKNESS_SHIFT = 4;
 
 inline constexpr u8 WALK_MASS_CHAMFER_MASK = 0x03;
 inline constexpr u32 WALK_MASS_CHAMFER_LEVELS = 3;

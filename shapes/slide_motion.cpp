@@ -10,6 +10,7 @@ namespace
 constexpr f32v3 RIGHT{1.f, 0.f, 0.f};
 constexpr f32v3 UP{0.f, 1.f, 0.f};
 constexpr TKit::FixedArray<f32v3, WALK_MASS_AXIS_CODES> AXES{RIGHT, UP, RIGHT, UP};
+constexpr TKit::FixedArray<u32, WALK_MASS_AXIS_CODES> SHEAR_REACH_AXES{0, 1, 0, 1};
 } // namespace
 
 JointMotion SlideMotion::Bake(const MotionSeed &seed, const WalkMassParams &params) const
@@ -18,7 +19,8 @@ JointMotion SlideMotion::Bake(const MotionSeed &seed, const WalkMassParams &para
     return JointMotion{.Kind = MotionKind::Slide,
                        .Timing = seed.Timing,
                        .Axis = AXES[seed.AxisCode],
-                       .Reach = amplitude * params.SlideReachMax * seed.Size,
+                       .Reach = TKit::Math::Min(amplitude * params.SlideReachMax * seed.Size,
+                                                seed.ShearReach[SHEAR_REACH_AXES[seed.AxisCode]]),
                        .Step = 0.f};
 }
 

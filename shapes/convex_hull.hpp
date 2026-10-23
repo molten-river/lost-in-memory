@@ -20,8 +20,13 @@ class ConvexHull
 
     [[nodiscard]] f32 Distance(const f32v3 &point) const;
     [[nodiscard]] f32v3 Gradient(const f32v3 &point) const;
+    /// Whether the two posed hulls, each shrunk a hair toward its centre, intersect; GJK on their difference.
+    [[nodiscard]] bool IsOverlapping(const f32m4 &pose, const ConvexHull &other, const f32m4 &otherPose) const;
     [[nodiscard]] f32 GetVolume() const;
     [[nodiscard]] TKit::Span<const f32v3> GetVertices() const;
+    [[nodiscard]] const f32v3 &GetCenter() const;
+    /// Distance from the vertex centroid to the farthest vertex.
+    [[nodiscard]] f32 GetRadius() const;
 
     /// Visits every outward counter-clockwise triangle as its three corners and its face normal.
     template <typename Emit> void ForEachTriangle(Emit &&emit) const
@@ -47,6 +52,8 @@ class ConvexHull
     TKit::StaticArray<f32v3, MAX_POINTS> m_Vertices{};
     TKit::StaticArray<Triangle, MAX_TRIANGLES> m_Triangles{};
     TKit::StaticArray<Plane, MAX_TRIANGLES> m_Planes{};
+    f32v3 m_Center{0.f};
     f32 m_Volume = 0.f;
+    f32 m_Radius = 0.f;
 };
 } // namespace Lim
