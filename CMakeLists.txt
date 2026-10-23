@@ -63,3 +63,4 @@ tkit_register_for_reflection(shapes SOURCES
     shapes/shape_kit_params.hpp
     shapes/walk_mass_params.hpp)
 add_subdirectory(lost-in-memory)
+add_subdirectory(lim-shapes)
