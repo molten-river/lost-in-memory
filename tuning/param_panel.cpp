@@ -152,6 +152,20 @@ void ParamPanel::Header(const TKit::StringView title, const TKit::Span<const TKi
     ui.HorizontalLine();
 }
 
+bool ParamPanel::CornerButton(const TKit::StringView label)
+{
+    if (!m_WindowOpen)
+        return false;
+
+    Onyx::Overlay &ui = *m_Overlay;
+    ui.BeginPanel(Onyx::Overlay::LyPnPar{.Direction = Onyx::LayoutDirection_LeftToRight,
+                                         .Alignment = Onyx::Overlay::TopRight,
+                                         .Sizing = {Onyx::LayoutSizing::Grow(), Onyx::LayoutSizing::Fit()}});
+    const bool pressed = ui.Button(label);
+    ui.EndPanel();
+    return pressed;
+}
+
 TKit::Optional<u32> ParamPanel::Buttons(const TKit::Span<const TKit::StringView> labels)
 {
     Onyx::Overlay &ui = *m_Overlay;

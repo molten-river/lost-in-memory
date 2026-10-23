@@ -34,6 +34,7 @@ class ParamPanel
     /// False-y work when opacity is zero or the window is offscreen; call End regardless, which still flushes.
     [[nodiscard]] bool Begin(const UiTheme &theme, f32 textSize, f32 opacity);
     void Header(TKit::StringView title, TKit::Span<const TKit::StringView> lines, TKit::StringView caption);
+    [[nodiscard]] bool CornerButton(TKit::StringView label);
     template <typename Root>
     void Tabs(Root &params, const Root &defaults, const VisibilityStrategy &visibility,
               TKit::Span<const PanelTab> tabs);
