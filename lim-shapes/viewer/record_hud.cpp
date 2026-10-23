@@ -12,7 +12,7 @@ namespace
 {
 using Line = TKit::StaticString<80>;
 
-constexpr u32 LINE_COUNT = 6;
+constexpr u32 LINE_COUNT = 7;
 constexpr TKit::StringView HEX_DIGITS = "0123456789ABCDEF";
 constexpr u32 NIBBLE_BITS = 4;
 constexpr u32 NIBBLE_MASK = 0x0F;
@@ -70,6 +70,7 @@ void RecordHud::Draw(ParamPanel &panel, const Readout &readout) const
         Line::Format("SOURCE 0x{:016X} +0x{:03X}", readout.Source, offset),
         Line::Format("{} / {}  TIME {:.2f} S  x{:g}  {}", readout.GalleryMode, readout.CameraMode, readout.Seconds,
                      readout.TimeScale, readout.Paused ? "PAUSED" : "PLAYING"),
+        Line::Format("{}", readout.Timings),
         Line::Format("TAG {:02X}  SIZE {:02X}  LATTICE {:02X}", ByteAt(bytes, RecordGallery::TAG_BYTE),
                      ByteAt(bytes, WALK_MASS_SIZE_BYTE), ByteAt(bytes, WALK_MASS_LATTICE_BYTE)),
         FormatSlots("SECTIONS", bytes, WALK_MASS_SECTIONS_BYTE, WALK_MASS_SECTION_COUNT, WALK_MASS_SECTION_BYTES),

@@ -139,6 +139,7 @@ void Viewer::Run()
     m_Gallery.Bake(*region, m_Params.Shapes);
     Home();
     RefreshCursor();
+    m_FrameClock.Restart();
 
     while (Onyx::Running())
     {
@@ -156,14 +157,26 @@ void Viewer::Run()
         CameraStrategy &camera = m_Cameras.Get(m_CameraKind);
         camera.Update(MakeCameraFrame(deltaTime));
         camera.ApplyTo(m_Camera);
+
+        TKit::Clock stage{};
         m_Gallery.Rewrite(m_Renderer, m_Clock.GetSeconds(), m_Params.Look.Colors, m_Params.Gallery);
+        const TKit::Timespan rewrite = stage.Restart();
 
         m_Context->Flush();
         DrawScene();
+        stage.Restart();
         m_PendingRebake = DrawPanel();
+        const TKit::Timespan panel = stage.Restart();
 
+        Onyx::SetTargetDeltaTime(m_Window, TKit::Timespan{});
+        Onyx::SetTargetDeltaTime(m_ToolWindow, TKit::Timespan{});
         Onyx::Transfer();
         Onyx::Render();
+        m_Timings.Record(FrameTimings::Sample{.Frame = m_FrameClock.Restart(),
+                                              .Scene = Onyx::GetDeltaTime(m_Window),
+                                              .Rewrite = rewrite,
+                                              .Panel = panel,
+                                              .Render = stage.Restart()});
     }
 }
 
@@ -244,9 +257,11 @@ void Viewer::HandleKeys()
     }
 }
 
-/// Sanitizes and saves the params, then rebakes every record from the kept bytes or from a fresh capture.
+/// Resets the params on request, sanitizes and saves them, then rebakes from the kept bytes or a fresh capture.
 void Viewer::Rebuild(const Rebake rebake)
 {
+    if (rebake == Rebake::ResetParams)
+        m_Params = ViewerParams{};
     ApplySchema(m_Params);
     if (!SaveParams(LIM_SHAPES_DEFAULTS_PATH, m_Params))
         TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the viewer params to defaults.yaml");
@@ -292,6 +307,7 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
     if (m_Panel.Begin(ToUiTheme(m_Params.Look.Colors), m_Params.Look.TextSize, 1.f))
     {
         const u32 record = m_Gallery.GetSelection();
+        const FrameTimings::Line timings = m_Timings.Describe();
         m_Hud.Draw(m_Panel, RecordHud::Readout{.Record = record,
                                                .Bytes = m_Gallery.GetRecord(record),
                                                .Source = m_Gallery.GetSource(),
@@ -299,7 +315,10 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
                                                .CameraMode = m_Cameras.Get(m_CameraKind).GetName(),
                                                .Seconds = m_Clock.GetSeconds(),
                                                .TimeScale = m_Clock.GetScale(),
-                                               .Paused = m_Clock.IsPaused()});
+                                               .Paused = m_Clock.IsPaused(),
+                                               .Timings = timings});
+        if (m_Panel.CornerButton("RESET"))
+            requested = Rebake::ResetParams;
         m_Panel.Tabs(m_Params, m_Defaults, ViewerVisibility{}, TABS);
         const TKit::Optional<u32> pressed = m_Panel.Buttons(BUTTON_LABELS);
         if (pressed)

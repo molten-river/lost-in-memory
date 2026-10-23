@@ -23,6 +23,7 @@ class RecordHud
         f32 Seconds;
         f32 TimeScale;
         bool Paused;
+        TKit::StringView Timings;
     };
 
     /// Call between a true ParamPanel::Begin and its tabs.

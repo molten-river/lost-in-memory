@@ -6,6 +6,7 @@ set(SOURCES
     viewer/viewer.cpp
     viewer/camera_registry.cpp
     viewer/fly_camera.cpp
+    viewer/frame_timings.cpp
     viewer/orbit_camera.cpp
     viewer/playback_clock.cpp
     viewer/record_gallery.cpp

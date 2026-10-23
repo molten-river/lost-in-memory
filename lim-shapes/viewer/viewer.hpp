@@ -6,6 +6,7 @@
 #include "tuning/param_panel.hpp"
 #include "viewer/camera_registry.hpp"
 #include "viewer/camera_strategy.hpp"
+#include "viewer/frame_timings.hpp"
 #include "viewer/playback_clock.hpp"
 #include "viewer/record_gallery.hpp"
 #include "viewer/record_hud.hpp"
@@ -18,6 +19,7 @@
 #include "onyx/window.hpp"
 
 #include "tkit/container/fixed_array.hpp"
+#include "tkit/profiling/clock.hpp"
 #include "tkit/utils/optional.hpp"
 
 namespace Lim
@@ -37,7 +39,8 @@ class Viewer
     enum class Rebake : u8
     {
         SameBytes,
-        NewRegion
+        NewRegion,
+        ResetParams
     };
 
     struct KeyBinding
@@ -73,6 +76,8 @@ class Viewer
     RecordGallery m_Gallery{};
     CameraRegistry m_Cameras{};
     PlaybackClock m_Clock{};
+    FrameTimings m_Timings{};
+    TKit::Clock m_FrameClock{};
     CameraRegistry::Kind m_CameraKind = CameraRegistry::Kind::Fly;
     TKit::Optional<Rebake> m_PendingRebake{};
     TKit::FixedArray<bool, KEY_BINDING_COUNT> m_KeyWasPressed{};
