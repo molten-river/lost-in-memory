@@ -28,6 +28,8 @@ void WalkMass::Evolve(const f32 seconds)
     const f32m4 root = EvaluateMotion(0, i32(m_Step));
     for (u32 i = 0; i < m_Pieces.GetSize(); ++i)
         m_Poses[i] = root * SelectPose(m_Pieces[i], m_Frames);
+    for (u32 i = 0; i < m_SampleSources.GetSize(); ++i)
+        m_Samples[i] = f32v3(m_Poses[m_SampleSources[i].Piece] * f32v4{m_SampleSources[i].Local, 1.f});
 }
 
 bool WalkMass::Emit(MeshBuilder &builder, const f32m4 &transform, const u32 packedColor) const
@@ -55,6 +57,16 @@ f32v3 WalkMass::Gradient(const f32v3 &local) const
 f32 WalkMass::GetBoundingRadius() const
 {
     return m_BoundingRadius;
+}
+
+TKit::Span<const f32v3> WalkMass::GetSamplePoints() const
+{
+    return m_Samples;
+}
+
+f32 WalkMass::GetVolume() const
+{
+    return m_Volume;
 }
 
 f32 WalkMass::GetSimulatedSeconds() const

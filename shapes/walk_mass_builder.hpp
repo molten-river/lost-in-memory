@@ -66,6 +66,7 @@ class WalkMassBuilder
     static const ConvexHull &AddPiece(WalkMass &mass, TKit::Span<const f32v3> points, bool followsMotion);
     void AddRod(WalkMass &mass, const ConvexHull &sleeve, const Section &current, f32 length, f32 reach) const;
     void Seal(WalkMass &mass) const;
+    static void GatherSamples(WalkMass &mass);
     [[nodiscard]] u8 ReadByte(usize index) const;
 
     TKit::Span<const std::byte> m_Record;

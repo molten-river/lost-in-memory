@@ -29,6 +29,8 @@ class WalkMass final : public Shape
     [[nodiscard]] f32 Distance(const f32v3 &local) const override;
     [[nodiscard]] f32v3 Gradient(const f32v3 &local) const override;
     [[nodiscard]] f32 GetBoundingRadius() const override;
+    [[nodiscard]] TKit::Span<const f32v3> GetSamplePoints() const override;
+    [[nodiscard]] f32 GetVolume() const override;
     /// The time the pose shows; it trails the requested time only while a jump longer than one call catches up.
     [[nodiscard]] f32 GetSimulatedSeconds() const;
 
@@ -70,6 +72,13 @@ class WalkMass final : public Shape
         TKit::FixedArray<f32m4, MAX_JOINTS> Moved{};
     };
 
+    /// A sample point fixed in its piece's frame.
+    struct SampleSource
+    {
+        f32v3 Local;
+        u8 Piece;
+    };
+
     struct NearestPiece
     {
         u32 Index;
@@ -98,9 +107,12 @@ class WalkMass final : public Shape
     Frames m_Frames{};
     TKit::FixedArray<Snapshot, SNAPSHOT_COUNT> m_Snapshots{};
     TKit::FixedArray<f32m4, MAX_PIECES> m_Poses{};
+    TKit::StaticArray<SampleSource, MAX_SAMPLE_POINTS> m_SampleSources{};
+    TKit::StaticArray<f32v3, MAX_SAMPLE_POINTS> m_Samples{};
     u32 m_Step = 0;
     u32 m_VertexCount = 0;
     f32 m_BoundingRadius = 0.f;
+    f32 m_Volume = 0.f;
 };
 
 static_assert(WalkMass::MAX_PIECES <= Shape::MAX_HULLS);

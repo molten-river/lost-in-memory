@@ -529,7 +529,7 @@ void WalkMassBuilder::AddRod(WalkMass &mass, const ConvexHull &sleeve, const Sec
     AddPiece(mass, points, true);
 }
 
-/// Bounds every pose: a turning joint swings a point about its origin and a sliding one adds its reach.
+/// Bakes what no pose changes; the radius walks each vertex out: a turning joint swings it, a sliding one adds reach.
 void WalkMassBuilder::Seal(WalkMass &mass) const
 {
     TKit::FixedArray<f32m4, WalkMass::MAX_JOINTS> frames{};
@@ -537,8 +537,12 @@ void WalkMassBuilder::Seal(WalkMass &mass) const
     for (u32 i = 1; i < mass.m_Joints.GetSize(); ++i)
         frames[i] = frames[i - 1] * mass.m_Joints[i].Rest;
 
-    for (const WalkMass::Piece &piece : mass.m_Pieces)
+    for (u32 i = 0; i < mass.m_Pieces.GetSize(); ++i)
     {
+        const WalkMass::Piece &piece = mass.m_Pieces[i];
+        const bool isRod = i > 0 && mass.m_Pieces[i - 1].Joint == piece.Joint;
+        if (!isRod)
+            mass.m_Volume += piece.Hull.GetVolume();
         for (const f32v3 &vertex : piece.Hull.GetVertices())
         {
             f32v3 anchor = f32v3(frames[piece.Joint] * f32v4{vertex, 1.f});
@@ -562,8 +566,35 @@ void WalkMassBuilder::Seal(WalkMass &mass) const
         piece.Hull.ForEachTriangle(
             [&mass](const f32v3 &, const f32v3 &, const f32v3 &, const f32v3 &) { mass.m_VertexCount += 3; });
     }
+    GatherSamples(mass);
     mass.Reset();
     mass.Evolve(0.f);
+}
+
+/// Hull vertices first, then triangle centres in the slots left, each thinned evenly when it overflows.
+void WalkMassBuilder::GatherSamples(WalkMass &mass)
+{
+    TKit::StaticArray<WalkMass::SampleSource, WalkMass::MAX_PIECES * ConvexHull::MAX_POINTS> corners{};
+    TKit::StaticArray<WalkMass::SampleSource, WalkMass::MAX_PIECES * ConvexHull::MAX_TRIANGLES> centres{};
+    for (u32 i = 0; i < mass.m_Pieces.GetSize(); ++i)
+    {
+        const WalkMass::Piece &piece = mass.m_Pieces[i];
+        for (const f32v3 &vertex : piece.Hull.GetVertices())
+            corners.Append(WalkMass::SampleSource{.Local = vertex, .Piece = u8(i)});
+        piece.Hull.ForEachTriangle([&](const f32v3 &first, const f32v3 &second, const f32v3 &third, const f32v3 &) {
+            centres.Append(WalkMass::SampleSource{.Local = (first + second + third) / 3.f, .Piece = u8(i)});
+        });
+    }
+
+    const auto take = [&mass](const TKit::Span<const WalkMass::SampleSource> sources) {
+        const usize count =
+            TKit::Math::Min(sources.GetSize(), Shape::MAX_SAMPLE_POINTS - mass.m_SampleSources.GetSize());
+        for (usize i = 0; i < count; ++i)
+            mass.m_SampleSources.Append(sources[i * sources.GetSize() / count]);
+    };
+    take(corners);
+    take(centres);
+    mass.m_Samples.Resize(mass.m_SampleSources.GetSize());
 }
 
 u8 WalkMassBuilder::ReadByte(const usize index) const

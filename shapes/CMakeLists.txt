@@ -8,6 +8,7 @@ add_library(shapes STATIC
     piston_motion.cpp
     ratchet_motion.cpp
     shape_factory.cpp
+    shape_kit_file.cpp
     shape_renderer.cpp
     slide_motion.cpp
     still_motion.cpp
@@ -17,3 +18,4 @@ target_include_directories(shapes PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(shapes PRIVATE -Wall -Wextra -Wpedantic)
 tkit_configure_compile_link_options(shapes NO_EXCEPTIONS NO_RTTI)
 target_link_libraries(shapes PUBLIC alias tuning onyx)
+target_compile_definitions(shapes PUBLIC LIM_SHAPE_KIT_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
