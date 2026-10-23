@@ -3,6 +3,7 @@
 #include "viewer/params_reflection.hpp"
 #include "viewer/viewer_visibility.hpp"
 
+#include "look/window_specs.hpp"
 #include "memory/region.hpp"
 #include "tuning/params_file.hpp"
 #include "tuning/schema_rules.hpp"
@@ -26,7 +27,16 @@ using Onyx::D3;
 namespace
 {
 constexpr const char *WINDOW_TITLE = "lim shapes";
-constexpr u32v2 WINDOW_SIZE{1600, 900};
+constexpr const char *TOOL_WINDOW_TITLE = "lim shapes - tuning";
+constexpr u32v2 TOOL_WINDOW_SIZE{700U, 1000U};
+constexpr i32 TOOL_WINDOW_EDGE = 16;
+constexpr i32 TOOL_WINDOW_TOP = 48;
+constexpr i32 TOOL_WINDOW_VERTICAL_ROOM = 3 * TOOL_WINDOW_TOP;
+constexpr i32 TOOL_WINDOW_MIN_HEIGHT = 480;
+constexpr Onyx::WindowFlags TOOL_WINDOW_FLAGS = Onyx::WindowFlag_Resizable | Onyx::WindowFlag_Visible |
+                                                Onyx::WindowFlag_Decorated | Onyx::WindowFlag_Floating |
+                                                Onyx::WindowFlag_InstallCallbacks;
+constexpr Onyx::OpenWindowFlags OPEN_FLAGS = Onyx::OpenWindowFlag_DoNotDestroyOnShouldClose;
 
 constexpr f32 CAMERA_FAR = 2000.f;
 constexpr f32 MAX_FRAME_SECONDS = 0.1f;
@@ -50,8 +60,6 @@ constexpr TKit::FixedArray<PanelTab, 4> TABS{{
     {"Shapes", "Shape kit"},
 }};
 
-constexpr TKit::FixedArray<TKit::StringView, 2> HEADER_LINES{"LOOK, CAMERA AND GALLERY CHANGE LIVE",
-                                                             "SHAPE KIT CHANGES REBAKE ON APPLY"};
 constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"APPLY", "NEW REGION"};
 
 /// Whether a reflected top-level member of Params is itself a struct, named name.
@@ -84,15 +92,34 @@ static_assert(AreTabsKnown(), "Every tab must name a struct member of ViewerPara
     ApplySchema(params);
     return params;
 }
+
+/// Floats at the right edge of the primary monitor, above the fullscreen scene, without taking its focus.
+[[nodiscard]] Onyx::WindowSpecs MakeToolWindowSpecs()
+{
+    Onyx::WindowSpecs specs{.Title = TOOL_WINDOW_TITLE,
+                            .Dimensions = TOOL_WINDOW_SIZE,
+                            .PresentMode = Onyx::PresentMode_VSync,
+                            .Flags = TOOL_WINDOW_FLAGS};
+    const TKit::Optional<u32v2> screen = GetMainScreenSize();
+    if (!screen)
+        return specs;
+
+    const i32 height = TKit::Math::Clamp(i32((*screen)[1]) - TOOL_WINDOW_VERTICAL_ROOM, TOOL_WINDOW_MIN_HEIGHT,
+                                         i32(TOOL_WINDOW_SIZE[1]));
+    specs.Dimensions = u32v2{TOOL_WINDOW_SIZE[0], u32(height)};
+    specs.Position =
+        i32v2{TKit::Math::Max(i32((*screen)[0]) - i32(TOOL_WINDOW_SIZE[0]) - TOOL_WINDOW_EDGE, 0), TOOL_WINDOW_TOP};
+    return specs;
+}
 } // namespace
 
 Viewer::Viewer()
-    : m_Window(Onyx::OpenWindow(
-          {.Window = {.Title = WINDOW_TITLE, .Dimensions = WINDOW_SIZE, .PresentMode = Onyx::PresentMode_VSync}})),
+    : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE), .Flags = OPEN_FLAGS})),
+      m_ToolWindow(Onyx::OpenWindow({.Window = MakeToolWindowSpecs(), .Flags = OPEN_FLAGS})),
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
       m_Context(Onyx::CreateRenderContext<D3>()),
       m_Material(Onyx::Resources::RegisterMaterial<D3>(Onyx::MaterialData<D3>{.RoughnessFactor = MATERIAL_ROUGHNESS})),
-      m_Params(LoadViewerParams()), m_Panel(*m_Window, m_Fonts), m_Hud(*m_Window, m_Fonts)
+      m_Params(LoadViewerParams()), m_Panel(*m_ToolWindow, m_Fonts)
 {
     m_Camera.PerspParameters.Far = CAMERA_FAR;
     m_Context->AddTarget(m_View);
@@ -111,6 +138,7 @@ void Viewer::Run()
     }
     m_Gallery.Bake(*region, m_Params.Shapes);
     Home();
+    RefreshCursor();
 
     while (Onyx::Running())
     {
@@ -119,7 +147,7 @@ void Viewer::Run()
             Rebuild(*m_PendingRebake);
             m_PendingRebake = TKit::Optional<Rebake>::None();
         }
-        if (m_Window->IsKeyPressed(Onyx::Key_Escape))
+        if (IsKeyDown(Onyx::Key_Escape) || m_Window->ShouldClose() || m_ToolWindow->ShouldClose())
             Onyx::Quit(Onyx::QuitFlag_DestroyWindows);
         HandleKeys();
 
@@ -132,15 +160,6 @@ void Viewer::Run()
 
         m_Context->Flush();
         DrawScene();
-        const u32 record = m_Gallery.GetSelection();
-        m_Hud.Draw(m_Params.Look, RecordHud::Readout{.Record = record,
-                                                     .Bytes = m_Gallery.GetRecord(record),
-                                                     .Source = m_Gallery.GetSource(),
-                                                     .GalleryMode = m_Gallery.GetModeName(),
-                                                     .CameraMode = camera.GetName(),
-                                                     .Seconds = m_Clock.GetSeconds(),
-                                                     .TimeScale = m_Clock.GetScale(),
-                                                     .Paused = m_Clock.IsPaused()});
         m_PendingRebake = DrawPanel();
 
         Onyx::Transfer();
@@ -159,7 +178,6 @@ void Viewer::Home()
 void Viewer::EngageCamera()
 {
     m_Cameras.Get(m_CameraKind).Engage(m_Camera.View, MakeCameraFrame(0.f));
-    RefreshCursor();
 }
 
 CameraFrame Viewer::MakeCameraFrame(const f32 deltaTime) const
@@ -168,16 +186,22 @@ CameraFrame Viewer::MakeCameraFrame(const f32 deltaTime) const
                        .Params = m_Params.Camera,
                        .Focus = m_Gallery.GetFocus(m_Params.Gallery),
                        .DeltaTime = deltaTime,
-                       .AcceptsInput = !m_PanelOpen};
+                       .AcceptsInput = m_CameraActive};
 }
 
+/// Locks the scene window's cursor exactly while the camera takes input, so a free cursor can reach the tool window.
 void Viewer::RefreshCursor()
 {
-    const bool locked = !m_PanelOpen && m_Cameras.Get(m_CameraKind).LocksCursor();
     GLFWwindow *const handle = m_Window->GetHandle();
-    glfwSetInputMode(handle, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
+    glfwSetInputMode(handle, GLFW_CURSOR, m_CameraActive ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
     if (glfwRawMouseMotionSupported())
-        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
+        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, m_CameraActive ? GLFW_TRUE : GLFW_FALSE);
+}
+
+/// GLFW reports a key only to the focused window, so a hotkey counts when either window holds it.
+bool Viewer::IsKeyDown(const Onyx::Key key) const
+{
+    return m_Window->IsKeyPressed(key) || m_ToolWindow->IsKeyPressed(key);
 }
 
 /// Runs each bound command once per press, because Onyx reports whether a key is held, not when it went down.
@@ -186,7 +210,7 @@ void Viewer::HandleKeys()
     static constexpr TKit::FixedArray<KeyBinding, KEY_BINDING_COUNT> BINDINGS{{
         {Onyx::Key_Tab,
          [](Viewer &viewer) {
-             viewer.m_PanelOpen = !viewer.m_PanelOpen;
+             viewer.m_CameraActive = !viewer.m_CameraActive;
              viewer.RefreshCursor();
          }},
         {Onyx::Key_G,
@@ -212,7 +236,7 @@ void Viewer::HandleKeys()
 
     for (u32 i = 0; i < KEY_BINDING_COUNT; ++i)
     {
-        const bool pressed = m_Window->IsKeyPressed(BINDINGS[i].Key);
+        const bool pressed = IsKeyDown(BINDINGS[i].Key);
         const bool triggered = pressed && !m_KeyWasPressed[i];
         m_KeyWasPressed[i] = pressed;
         if (triggered)
@@ -245,6 +269,7 @@ void Viewer::DrawScene()
     const ViewerLook &look = m_Params.Look;
     m_Window->ClearColor = look.Colors.Background;
     m_View->ClearColor = look.Colors.Background;
+    m_ToolWindow->ClearColor = look.Colors.UiBackground;
 
     m_Context->Material(m_Material);
     m_Context->RenderFlags(Onyx::RenderModeFlag_Shaded);
@@ -264,10 +289,17 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
                                                                                       Rebake::NewRegion};
 
     TKit::Optional<Rebake> requested{};
-    if (m_Panel.Begin(ToUiTheme(m_Params.Look.Colors), m_Params.Look.TextSize, m_PanelOpen ? 1.f : 0.f))
+    if (m_Panel.Begin(ToUiTheme(m_Params.Look.Colors), m_Params.Look.TextSize, 1.f))
     {
-        const TKit::StaticString32 source = TKit::StaticString32::Format("SOURCE 0x{:016X}", m_Gallery.GetSource());
-        m_Panel.Header("LIM SHAPES", HEADER_LINES, source);
+        const u32 record = m_Gallery.GetSelection();
+        m_Hud.Draw(m_Panel, RecordHud::Readout{.Record = record,
+                                               .Bytes = m_Gallery.GetRecord(record),
+                                               .Source = m_Gallery.GetSource(),
+                                               .GalleryMode = m_Gallery.GetModeName(),
+                                               .CameraMode = m_Cameras.Get(m_CameraKind).GetName(),
+                                               .Seconds = m_Clock.GetSeconds(),
+                                               .TimeScale = m_Clock.GetScale(),
+                                               .Paused = m_Clock.IsPaused()});
         m_Panel.Tabs(m_Params, m_Defaults, ViewerVisibility{}, TABS);
         const TKit::Optional<u32> pressed = m_Panel.Buttons(BUTTON_LABELS);
         if (pressed)

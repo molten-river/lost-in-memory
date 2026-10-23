@@ -7,7 +7,7 @@
 
 namespace Lim
 {
-/// Circles the focus on a free cursor: a left-button drag turns around it, W and S change the distance.
+/// Circles the focus: moving the mouse with the left button held turns around it, W and S change the distance.
 class OrbitCamera final : public CameraStrategy
 {
   public:
@@ -17,7 +17,6 @@ class OrbitCamera final : public CameraStrategy
     void Engage(const Onyx::Transform<Onyx::D3> &view, const CameraFrame &frame) override;
     void Update(const CameraFrame &frame) override;
     void ApplyTo(Onyx::Camera<Onyx::D3> &camera) const override;
-    [[nodiscard]] bool LocksCursor() const override;
     [[nodiscard]] TKit::StringView GetName() const override;
 
   private:

@@ -15,7 +15,6 @@ class FlyCamera final : public CameraStrategy
     void Engage(const Onyx::Transform<Onyx::D3> &view, const CameraFrame &frame) override;
     void Update(const CameraFrame &frame) override;
     void ApplyTo(Onyx::Camera<Onyx::D3> &camera) const override;
-    [[nodiscard]] bool LocksCursor() const override;
     [[nodiscard]] TKit::StringView GetName() const override;
 
   private:

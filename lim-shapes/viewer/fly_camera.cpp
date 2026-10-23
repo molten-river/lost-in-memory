@@ -53,11 +53,6 @@ void FlyCamera::ApplyTo(Onyx::Camera<Onyx::D3> &camera) const
     camera.View.Rotation = m_Orientation;
 }
 
-bool FlyCamera::LocksCursor() const
-{
-    return true;
-}
-
 TKit::StringView FlyCamera::GetName() const
 {
     return "FLY";

@@ -3,7 +3,7 @@ project(look)
 
 include(${CMAKE_CURRENT_SOURCE_DIR}/../cmake/embed.cmake)
 
-add_library(look STATIC font_library.cpp)
+add_library(look STATIC font_library.cpp window_specs.cpp)
 target_include_directories(look PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/..)
 target_compile_options(look PRIVATE -Wall -Wextra -Wpedantic)
 tkit_configure_compile_link_options(look NO_EXCEPTIONS NO_RTTI)

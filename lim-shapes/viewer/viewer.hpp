@@ -22,7 +22,7 @@
 
 namespace Lim
 {
-/// Owns the window and every viewer module, and runs the frame: input, watch, pose, draw, panel and HUD.
+/// Owns the fullscreen scene window, the tool window with the panel, and every viewer module, and runs the frame.
 class Viewer
 {
   public:
@@ -52,12 +52,14 @@ class Viewer
     void EngageCamera();
     [[nodiscard]] CameraFrame MakeCameraFrame(f32 deltaTime) const;
     void RefreshCursor();
+    [[nodiscard]] bool IsKeyDown(Onyx::Key key) const;
     void HandleKeys();
     void Rebuild(Rebake rebake);
     void DrawScene();
     [[nodiscard]] TKit::Optional<Rebake> DrawPanel();
 
     Onyx::Window *m_Window;
+    Onyx::Window *m_ToolWindow;
     Onyx::Camera<Onyx::D3> m_Camera{};
     Onyx::RenderView<Onyx::D3> *m_View;
     Onyx::RenderContext<Onyx::D3> *m_Context;
@@ -66,7 +68,7 @@ class Viewer
     ViewerParams m_Params;
     const ViewerParams m_Defaults{};
     ParamPanel m_Panel;
-    RecordHud m_Hud;
+    RecordHud m_Hud{};
     ShapeRenderer m_Renderer{};
     RecordGallery m_Gallery{};
     CameraRegistry m_Cameras{};
@@ -74,6 +76,6 @@ class Viewer
     CameraRegistry::Kind m_CameraKind = CameraRegistry::Kind::Fly;
     TKit::Optional<Rebake> m_PendingRebake{};
     TKit::FixedArray<bool, KEY_BINDING_COUNT> m_KeyWasPressed{};
-    bool m_PanelOpen = false;
+    bool m_CameraActive = true;
 };
 } // namespace Lim

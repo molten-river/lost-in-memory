@@ -1,9 +1,9 @@
 #include "lim/game.hpp"
 
 #include "lim/debug_tools.hpp"
+#include "look/window_specs.hpp"
 
 #include "onyx/onyx.hpp"
-#include "onyx/platform.hpp"
 
 #include "tkit/math/math.hpp"
 #include "tkit/utils/logging.hpp"
@@ -17,28 +17,10 @@ using Onyx::D3;
 namespace
 {
 constexpr const char *WINDOW_TITLE = "Lost in Memory";
-constexpr Onyx::WindowFlags BORDERLESS_FLAGS = Onyx::WindowFlag_Visible | Onyx::WindowFlag_Focused |
-                                               Onyx::WindowFlag_FocusOnShow | Onyx::WindowFlag_InstallCallbacks;
 
 constexpr f32 CAMERA_FAR = 250.f;
 constexpr f32 MAX_FRAME_SECONDS = 0.1f;
 constexpr u32 CAPTURE_ATTEMPTS = 3;
-
-/// A borderless window covering the primary monitor, or Onyx's default decorated window when no monitor is reported.
-[[nodiscard]] Onyx::WindowSpecs MakeWindowSpecs()
-{
-    Onyx::WindowSpecs specs{.Title = WINDOW_TITLE, .PresentMode = Onyx::PresentMode_VSync};
-    Onyx_MonitorHandle *const monitor = Onyx::Platform::GetMainMonitor();
-    if (!monitor)
-        return specs;
-    const Onyx::Platform::VideoMode mode = Onyx::Platform::GetVideoMode(monitor);
-    if (mode.Dimensions[0] == 0 || mode.Dimensions[1] == 0)
-        return specs;
-    specs.Position = Onyx::i32v2{0, 0};
-    specs.Dimensions = mode.Dimensions;
-    specs.Flags = BORDERLESS_FLAGS;
-    return specs;
-}
 
 [[nodiscard]] SandboxScreen::Title TitleFromOutcome(const Level::Outcome outcome)
 {
@@ -47,7 +29,7 @@ constexpr u32 CAPTURE_ATTEMPTS = 3;
 } // namespace
 
 Game::Game(const PlayMode mode)
-    : m_Window(Onyx::OpenWindow({.Window = MakeWindowSpecs()})),
+    : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE)})),
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
       m_Context(Onyx::CreateRenderContext<D3>()), m_Params(Sanitize(LoadLevelParams())), m_Sandbox(*m_Window, m_Fonts),
       m_Player(*m_Window), m_Mode(mode)

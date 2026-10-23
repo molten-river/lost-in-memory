@@ -73,11 +73,6 @@ void OrbitCamera::ApplyTo(Onyx::Camera<Onyx::D3> &camera) const
     camera.View = Frame(m_Target, m_Yaw, m_Pitch, m_Distance);
 }
 
-bool OrbitCamera::LocksCursor() const
-{
-    return false;
-}
-
 TKit::StringView OrbitCamera::GetName() const
 {
     return "ORBIT";

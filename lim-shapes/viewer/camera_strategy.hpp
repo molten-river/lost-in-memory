@@ -37,7 +37,6 @@ class CameraStrategy
     virtual void Engage(const Onyx::Transform<Onyx::D3> &view, const CameraFrame &frame) = 0;
     virtual void Update(const CameraFrame &frame) = 0;
     virtual void ApplyTo(Onyx::Camera<Onyx::D3> &camera) const = 0;
-    [[nodiscard]] virtual bool LocksCursor() const = 0;
     [[nodiscard]] virtual TKit::StringView GetName() const = 0;
 };
 

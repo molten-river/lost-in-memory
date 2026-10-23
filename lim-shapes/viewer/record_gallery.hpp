@@ -24,6 +24,7 @@ class RecordGallery
     static constexpr u32 GENOME_BYTES = 64;
     static constexpr u32 RECORD_BYTES = u32(WALK_MASS_RECORD_BYTES);
     static constexpr u32 RECORD_COUNT = 63;
+    static constexpr usize TAG_BYTE = 0;
 
     enum class Mode : u8
     {

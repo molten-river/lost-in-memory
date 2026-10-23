@@ -13,7 +13,6 @@ namespace
 {
 constexpr u32 MODE_COUNT = u32(RecordGallery::Mode::Single) + 1;
 constexpr TKit::FixedArray<TKit::StringView, MODE_COUNT> MODE_NAMES{"GRID", "SINGLE"};
-constexpr usize TAG_BYTE = 0;
 
 static_assert(RecordGallery::GENOME_BYTES + RecordGallery::RECORD_COUNT * RecordGallery::RECORD_BYTES == REGION_BYTES,
               "The genome and the records must fill the region exactly");
