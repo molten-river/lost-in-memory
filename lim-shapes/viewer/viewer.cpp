@@ -405,7 +405,9 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
                                                .Timings = timings});
         if (m_Panel.CornerButton("RESET"))
             requested = Rebake::ResetParams;
+        m_Panel.BeginTabs();
         m_Panel.Tabs(m_Params, m_Defaults, ViewerVisibility{}, TABS);
+        m_Panel.EndTabs();
         const TKit::Optional<u32> pressed = m_Panel.Buttons(BUTTON_LABELS);
         if (pressed)
             requested = BUTTON_REBAKES[*pressed];

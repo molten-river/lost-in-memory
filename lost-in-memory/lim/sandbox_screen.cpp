@@ -112,7 +112,9 @@ SandboxScreen::Action SandboxScreen::DrawPanel(LevelParams &params, const PlayMo
     m_Panel.Header(HeadingText(title), lines, source);
 
     const GameVisibility visibility{mode, params.Flags};
+    m_Panel.BeginTabs();
     m_Panel.Tabs(params, m_Defaults, visibility, TKit::Span<const PanelTab>(TABS.GetData(), TABS.GetSize()));
+    m_Panel.EndTabs();
 
     const TKit::Optional<u32> pressed =
         m_Panel.Buttons(TKit::Span<const TKit::StringView>(BUTTON_LABELS.GetData(), BUTTON_LABELS.GetSize()));

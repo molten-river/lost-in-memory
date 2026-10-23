@@ -166,6 +166,17 @@ bool ParamPanel::CornerButton(const TKit::StringView label)
     return pressed;
 }
 
+void ParamPanel::BeginTabs()
+{
+    constexpr TKit::StringView TAB_BAR_ID = "lim-tuning-tabs";
+    m_Overlay->BeginTabBar(TAB_BAR_ID);
+}
+
+void ParamPanel::EndTabs()
+{
+    m_Overlay->EndTabBar();
+}
+
 TKit::Optional<u32> ParamPanel::Buttons(const TKit::Span<const TKit::StringView> labels)
 {
     Onyx::Overlay &ui = *m_Overlay;

@@ -35,9 +35,11 @@ class ParamPanel
     [[nodiscard]] bool Begin(const UiTheme &theme, f32 textSize, f32 opacity);
     void Header(TKit::StringView title, TKit::Span<const TKit::StringView> lines, TKit::StringView caption);
     [[nodiscard]] bool CornerButton(TKit::StringView label);
+    void BeginTabs();
     template <typename Root>
     void Tabs(Root &params, const Root &defaults, const VisibilityStrategy &visibility,
               TKit::Span<const PanelTab> tabs);
+    void EndTabs();
     [[nodiscard]] TKit::Optional<u32> Buttons(TKit::Span<const TKit::StringView> labels);
     void End();
 
@@ -196,16 +198,13 @@ void ParamPanel::DrawTab(Onyx::Overlay &ui, Root &params, const Root &defaults, 
     });
 }
 
+/// Several roots can share one tab bar: call once per root between BeginTabs and EndTabs.
 template <typename Root>
 void ParamPanel::Tabs(Root &params, const Root &defaults, const VisibilityStrategy &visibility,
                       const TKit::Span<const PanelTab> tabs)
 {
-    constexpr TKit::StringView TAB_BAR_ID = "lim-tuning-tabs";
-
     Onyx::Overlay &ui = *m_Overlay;
-    ui.BeginTabBar(TAB_BAR_ID);
     for (const PanelTab &tab : tabs)
         DrawTab(ui, params, defaults, visibility, tab);
-    ui.EndTabBar();
 }
 } // namespace Lim
