@@ -2,6 +2,7 @@
 
 #include "alias/alias.hpp"
 #include "look/font_library.hpp"
+#include "shapes/shape_kit_params.hpp"
 #include "shapes/shape_renderer.hpp"
 #include "tuning/param_panel.hpp"
 #include "viewer/camera_registry.hpp"
@@ -75,6 +76,8 @@ class Viewer
     FontLibrary m_Fonts{};
     ViewerParams m_Params;
     const ViewerParams m_Defaults{};
+    ShapeKitParams m_Kit;
+    const ShapeKitParams m_KitDefaults{};
     ParamPanel m_Panel;
     RecordHud m_Hud{};
     ShapeRenderer m_Renderer{};

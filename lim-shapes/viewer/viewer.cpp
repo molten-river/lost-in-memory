@@ -5,6 +5,7 @@
 
 #include "look/window_specs.hpp"
 #include "memory/region.hpp"
+#include "shapes/shape_kit_file.hpp"
 #include "tuning/params_file.hpp"
 #include "tuning/schema_rules.hpp"
 
@@ -55,12 +56,12 @@ constexpr f32 SHAPES_SETTLE_SECONDS = 0.1f;
 constexpr f32 SCALE_STEP = 2.f;
 constexpr f32 SCRUB_SECONDS = 0.5f;
 
-constexpr TKit::FixedArray<PanelTab, 4> TABS{{
+constexpr TKit::FixedArray<PanelTab, 3> VIEWER_TABS{{
     {"Look", "Look"},
     {"Camera", "Camera"},
     {"Gallery", "Gallery"},
-    {"Shapes", "Shape kit"},
 }};
+constexpr TKit::FixedArray<PanelTab, 1> KIT_TABS{PanelTab{"WalkMass", "Shape kit"}};
 
 constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"SAME BYTES", "NEW REGION"};
 
@@ -76,10 +77,10 @@ template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKi
     return found;
 }
 
-[[nodiscard]] constexpr bool AreTabsKnown()
+template <typename Root> [[nodiscard]] constexpr bool AreTabsKnown(const TKit::Span<const PanelTab> tabs)
 {
-    for (const PanelTab &tab : TABS)
-        if (!IsStructMember<ViewerParams>(tab.Field))
+    for (const PanelTab &tab : tabs)
+        if (!IsStructMember<Root>(tab.Field))
             return false;
     return true;
 }
@@ -99,7 +100,8 @@ template <typename Params> [[nodiscard]] bool AreParamsEqual(const Params &left,
 }
 
 static_assert(IsSchemaSound<ViewerParams>(), "Every viewer tuning field needs exactly one ParamSpec in its schema");
-static_assert(AreTabsKnown(), "Every tab must name a struct member of ViewerParams");
+static_assert(AreTabsKnown<ViewerParams>(VIEWER_TABS) && AreTabsKnown<ShapeKitParams>(KIT_TABS),
+              "Every tab must name a struct member of its root");
 
 [[nodiscard]] ViewerParams LoadViewerParams()
 {
@@ -135,7 +137,7 @@ Viewer::Viewer()
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
       m_Context(Onyx::CreateRenderContext<D3>()),
       m_Material(Onyx::Resources::RegisterMaterial<D3>(Onyx::MaterialData<D3>{.RoughnessFactor = MATERIAL_ROUGHNESS})),
-      m_Params(LoadViewerParams()), m_Panel(*m_ToolWindow, m_Fonts)
+      m_Params(LoadViewerParams()), m_Kit(LoadShapeKitParams()), m_Panel(*m_ToolWindow, m_Fonts)
 {
     m_Camera.PerspParameters.Far = CAMERA_FAR;
     m_Context->AddTarget(m_View);
@@ -146,13 +148,13 @@ void Viewer::Run()
 {
     TKit::Optional<Region> region{};
     for (u32 attempt = 0; attempt < CAPTURE_ATTEMPTS && !region; ++attempt)
-        region = Region::Capture(Region::Filter::NonZero);
+        region = Region::Capture();
     if (!region)
     {
         TKIT_LOG_ERROR("[LIM][VIEWER] Could not capture a memory region after {} attempts", CAPTURE_ATTEMPTS);
         return;
     }
-    m_Gallery.Bake(*region, m_Params.Shapes);
+    m_Gallery.Bake(*region, m_Kit);
     MarkShapesBaked();
     Home();
     SetCameraActive(true);
@@ -306,18 +308,17 @@ void Viewer::StepSelection(const i32 offset)
 /// Rebakes once the shape kit params have stayed unchanged for a moment, so a drag rebakes once it settles.
 void Viewer::SettleShapes()
 {
-    if (!AreParamsEqual(m_Params.Shapes, m_SeenShapes))
+    if (!AreParamsEqual(m_Kit, m_SeenShapes))
     {
-        m_SeenShapes = m_Params.Shapes;
+        m_SeenShapes = m_Kit;
         m_ShapesSettle.Restart();
         return;
     }
-    if (AreParamsEqual(m_Params.Shapes, m_BakedShapes) ||
-        m_ShapesSettle.GetElapsed().AsSeconds() < SHAPES_SETTLE_SECONDS)
+    if (AreParamsEqual(m_Kit, m_BakedShapes) || m_ShapesSettle.GetElapsed().AsSeconds() < SHAPES_SETTLE_SECONDS)
         return;
 
-    ApplySchema(m_Params);
-    m_Gallery.Rebake(m_Params.Shapes);
+    ApplySchema(m_Kit);
+    m_Gallery.Rebake(m_Kit);
     MarkShapesBaked();
 }
 
@@ -325,23 +326,26 @@ void Viewer::SettleShapes()
 void Viewer::Rebuild(const Rebake rebake)
 {
     if (rebake == Rebake::ResetParams)
+    {
         m_Params = ViewerParams{};
+        m_Kit = ShapeKitParams{};
+    }
     Persist();
 
     if (rebake == Rebake::NewRegion)
     {
-        const TKit::Optional<Region> fresh = Region::Capture(Region::Filter::NonZero);
+        const TKit::Optional<Region> fresh = Region::Capture();
         if (fresh)
-            m_Gallery.Bake(*fresh, m_Params.Shapes);
+            m_Gallery.Bake(*fresh, m_Kit);
         else
         {
             TKIT_LOG_ERROR("[LIM][VIEWER] Could not capture a new memory region, keeping 0x{:016X}",
                            m_Gallery.GetSource());
-            m_Gallery.Rebake(m_Params.Shapes);
+            m_Gallery.Rebake(m_Kit);
         }
     }
     else
-        m_Gallery.Rebake(m_Params.Shapes);
+        m_Gallery.Rebake(m_Kit);
 
     if (rebake == Rebake::SameBytes)
         m_Clock.Reset();
@@ -350,16 +354,19 @@ void Viewer::Rebuild(const Rebake rebake)
 
 void Viewer::MarkShapesBaked()
 {
-    m_BakedShapes = m_Params.Shapes;
-    m_SeenShapes = m_Params.Shapes;
+    m_BakedShapes = m_Kit;
+    m_SeenShapes = m_Kit;
 }
 
-/// Sanitizes the params and writes them to defaults.yaml.
+/// Sanitizes both roots and writes the viewer's and the kit's tuning files.
 void Viewer::Persist()
 {
     ApplySchema(m_Params);
+    ApplySchema(m_Kit);
     if (!SaveParams(LIM_SHAPES_DEFAULTS_PATH, m_Params))
-        TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the viewer params to defaults.yaml");
+        TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the viewer params to {}", LIM_SHAPES_DEFAULTS_PATH);
+    if (!SaveShapeKitParams(m_Kit))
+        TKIT_LOG_ERROR("[LIM][VIEWER] Could not save the shape kit params to {}", LIM_SHAPE_KIT_DEFAULTS_PATH);
 }
 
 void Viewer::DrawScene()
@@ -406,7 +413,8 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
         if (m_Panel.CornerButton("RESET"))
             requested = Rebake::ResetParams;
         m_Panel.BeginTabs();
-        m_Panel.Tabs(m_Params, m_Defaults, ViewerVisibility{}, TABS);
+        m_Panel.Tabs(m_Params, m_Defaults, ViewerVisibility{}, VIEWER_TABS);
+        m_Panel.Tabs(m_Kit, m_KitDefaults, ViewerVisibility{}, KIT_TABS);
         m_Panel.EndTabs();
         const TKit::Optional<u32> pressed = m_Panel.Buttons(BUTTON_LABELS);
         if (pressed)

@@ -2,7 +2,6 @@
 
 #include "alias/alias.hpp"
 #include "look/ui_theme.hpp"
-#include "shapes/shape_kit_params.hpp"
 #include "tuning/param_schema.hpp"
 
 #include "onyx/color.hpp"
@@ -180,7 +179,6 @@ struct ViewerParams
     ViewerLook Look;
     CameraParams Camera;
     GalleryParams Gallery;
-    ShapeKitParams Shapes;
 };
 
 [[nodiscard]] inline UiTheme ToUiTheme(const ViewerPalette &palette)
