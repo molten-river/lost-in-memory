@@ -16,6 +16,8 @@
 #include "tkit/reflection/reflect.hpp"
 #include "tkit/utils/optional.hpp"
 
+#include <type_traits>
+
 namespace Lim
 {
 /// One tab of the panel: a top-level reflected member of the root params struct, with its display title.
@@ -65,6 +67,9 @@ class ParamPanel
     template <typename Params, TKit::Numeric T>
     static void DrawLeaf(Onyx::Overlay &ui, const Label &label, T &value, T defaultValue,
                          const ParamSpec<Params> &spec);
+    template <typename Type>
+        requires std::is_enum_v<Type>
+    static void DrawEnumLeaf(Onyx::Overlay &ui, const Label &label, Type &value);
     template <typename Params>
     [[nodiscard]] static bool HasVisibleField(const SectionWalk &walk, TKit::StringView section);
     template <typename Params>
@@ -126,12 +131,27 @@ void ParamPanel::DrawLeaf(Onyx::Overlay &ui, const Label &label, T &value, const
     ui.HorizontalDrag(label, &value, drag.Speed, T(low), T(high), drag.Format);
 }
 
+/// The field's label, then one radio button per enumerator, as a single row.
+template <typename Type>
+    requires std::is_enum_v<Type>
+void ParamPanel::DrawEnumLeaf(Onyx::Overlay &ui, const Label &label, Type &value)
+{
+    ui.BeginPanel(Onyx::Overlay::LyPnPar{.Direction = Onyx::LayoutDirection_LeftToRight,
+                                         .Sizing = {Onyx::LayoutSizing::Grow(), Onyx::LayoutSizing::Fit()},
+                                         .ChildGap = ui.GetStyle()[Onyx::OverlayStyle_ChildGap]});
+    ui.TextRaw(label);
+    for (u32 i = 0; const char *name = TKit::Reflect<Type>::ToString(Type(i)); ++i)
+        if (ui.RadioButton(name, value == Type(i)))
+            value = Type(i);
+    ui.EndPanel();
+}
+
 template <typename Params> bool ParamPanel::HasVisibleField(const SectionWalk &walk, const TKit::StringView section)
 {
     bool visible = false;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             visible = visible || HasVisibleField<Type>(walk, field.Name);
         else
             visible = visible || walk.Visibility.IsVisible(section, field.Name);
@@ -147,21 +167,30 @@ void ParamPanel::DrawFields(SectionWalk &walk, Params &params, const Params &def
 
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (!TKit::Reflect<Type>::Implemented)
+        if constexpr (!ReflectedStruct<Type>)
         {
             if (!walk.Visibility.IsVisible(section, field.Name))
                 return;
-            const ParamSpec<Params> &spec = FindSpec(field.Pointer);
-            if constexpr (TKit::Numeric<Type>)
-                DrawLeaf(walk.Ui, ToLabel(field.Name), field.Get(params), field.Get(defaults), spec);
+            if constexpr (std::is_enum_v<Type>)
+            {
+                const EnumSpec<Params> &spec = FindEnumSpec<Params>(field.Name);
+                DrawEnumLeaf(walk.Ui, ToLabel(field.Name), field.Get(params));
+                walk.Ui.SetItemTooltipRaw(spec.Hint, HINT_FLAGS);
+            }
             else
-                DrawLeaf(walk.Ui, ToLabel(field.Name), field.Get(params));
-            walk.Ui.SetItemTooltipRaw(spec.Hint, HINT_FLAGS);
+            {
+                const ParamSpec<Params> &spec = FindSpec(field.Pointer);
+                if constexpr (TKit::Numeric<Type>)
+                    DrawLeaf(walk.Ui, ToLabel(field.Name), field.Get(params), field.Get(defaults), spec);
+                else
+                    DrawLeaf(walk.Ui, ToLabel(field.Name), field.Get(params));
+                walk.Ui.SetItemTooltipRaw(spec.Hint, HINT_FLAGS);
+            }
         }
     });
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
         {
             if (!HasVisibleField<Type>(walk, field.Name))
                 return;
@@ -185,7 +214,7 @@ void ParamPanel::DrawTab(Onyx::Overlay &ui, Root &params, const Root &defaults, 
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if (TKit::StringView{field.Name} != tab.Field)
             return;
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
         {
             SectionWalk walk{.Ui = ui, .DimText = m_DimText, .Visibility = visibility, .Count = 0};
             if (!HasVisibleField<Type>(walk, field.Name) || !ui.BeginTab(ToLabel(tab.Title), TAB_FLAGS))

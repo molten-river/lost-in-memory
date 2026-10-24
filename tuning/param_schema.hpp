@@ -5,11 +5,17 @@
 #include "onyx/color.hpp"
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"
+#include "tkit/reflection/reflect.hpp"
 
+#include <type_traits>
 #include <variant>
 
 namespace Lim
 {
+/// A reflected member the walkers recurse into; the generated enum reflection is also Implemented, so it is excluded.
+template <typename Type>
+concept ReflectedStruct = TKit::Reflect<Type>::Implemented && !std::is_enum_v<Type>;
+
 inline constexpr const char *INTEGER_FORMAT = "{}";
 inline constexpr const char *WHOLE_FORMAT = "{:.0f}";
 inline constexpr const char *ONE_DECIMAL_FORMAT = "{:.1f}";
@@ -106,5 +112,37 @@ template <typename Params, typename Value>
     while (index < ParamSchema<Params>::FIELDS.GetSize() && !ParamSchema<Params>::FIELDS[index].Describes(member))
         ++index;
     return ParamSchema<Params>::FIELDS[index];
+}
+
+/// One reflected enum leaf's tooltip, matched by field name since a shared member-pointer variant can't name every enum
+/// type.
+template <typename Params> struct EnumSpec
+{
+    TKit::StringView Field;
+    TKit::StringView Hint;
+};
+
+template <typename Params>
+concept HasParamEnums = requires { ParamSchema<Params>::ENUMS; };
+
+/// How many specs of the struct's schema describe the named enum field; a well formed schema yields one per leaf.
+template <typename Params> [[nodiscard]] constexpr u32 CountEnumSpecs(const TKit::StringView field)
+{
+    u32 count = 0;
+    if constexpr (HasParamEnums<Params>)
+        for (const EnumSpec<Params> &spec : ParamSchema<Params>::ENUMS)
+            count += spec.Field == field ? 1U : 0U;
+    return count;
+}
+
+/// The field must have a spec; a missing one trips the bounds assert of the table.
+template <typename Params>
+    requires HasParamEnums<Params>
+[[nodiscard]] constexpr const EnumSpec<Params> &FindEnumSpec(const TKit::StringView field)
+{
+    usize index = 0;
+    while (index < ParamSchema<Params>::ENUMS.GetSize() && ParamSchema<Params>::ENUMS[index].Field != field)
+        ++index;
+    return ParamSchema<Params>::ENUMS[index];
 }
 } // namespace Lim

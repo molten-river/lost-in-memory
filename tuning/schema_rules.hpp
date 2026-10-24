@@ -50,7 +50,7 @@ template <typename Params> bool ApplySchema(Params &params)
     bool changed = false;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             changed = ApplySchema(field.Get(params)) || changed;
     });
     if constexpr (HasParamPairs<Params>)
@@ -73,11 +73,17 @@ template <typename Params> [[nodiscard]] bool AreDefaultsWithinSchema()
 template <typename Params> [[nodiscard]] constexpr bool IsSchemaSound()
 {
     u32 leaves = 0;
+    u32 enumLeaves = 0;
     bool sound = true;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             sound = sound && IsSchemaSound<Type>();
+        else if constexpr (std::is_enum_v<Type>)
+        {
+            ++enumLeaves;
+            sound = sound && CountEnumSpecs<Params>(field.Name) == 1;
+        }
         else
         {
             ++leaves;
@@ -87,9 +93,12 @@ template <typename Params> [[nodiscard]] constexpr bool IsSchemaSound()
     if constexpr (HasParamPairs<Params>)
         for (const OrderedPair<Params> &pair : ParamSchema<Params>::PAIRS)
             sound = sound && pair.Low.index() == pair.High.index();
+    u32 expectedLeaves = 0;
     if constexpr (HasParamFields<Params>)
-        return sound && leaves == ParamSchema<Params>::FIELDS.GetSize();
-    else
-        return sound && leaves == 0;
+        expectedLeaves = ParamSchema<Params>::FIELDS.GetSize();
+    u32 expectedEnumLeaves = 0;
+    if constexpr (HasParamEnums<Params>)
+        expectedEnumLeaves = ParamSchema<Params>::ENUMS.GetSize();
+    return sound && leaves == expectedLeaves && enumLeaves == expectedEnumLeaves;
 }
 } // namespace Lim

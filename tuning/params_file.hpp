@@ -68,7 +68,7 @@ template <typename Root> void AppendParamFields(TKit::TierString &out, const Roo
             out += ' ';
         out += field.Name;
         out += PARAMS_KEY_VALUE_SEPARATOR;
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
         {
             out += PARAMS_LINE_BREAK;
             AppendParamFields(out, field.Get(root), depth + 1);
@@ -76,7 +76,9 @@ template <typename Root> void AppendParamFields(TKit::TierString &out, const Roo
         else
         {
             out += ' ';
-            if constexpr (std::is_same_v<Type, bool>)
+            if constexpr (std::is_enum_v<Type>)
+                out += TKit::Reflect<Type>::ToString(field.Get(root));
+            else if constexpr (std::is_same_v<Type, bool>)
                 AppendParamBool(out, field.Get(root));
             else if constexpr (std::is_same_v<Type, Onyx::Color>)
                 AppendParamColor(out, field.Get(root));
@@ -133,6 +135,20 @@ template <typename Number> inline bool ParseParamNumber(Number &target, const TK
     return true;
 }
 
+/// FromString TKIT_FATALs on an unknown string, so every enumerator is matched against ToString first.
+template <typename Type>
+    requires std::is_enum_v<Type>
+[[nodiscard]] bool ParseParamEnum(Type &target, const TKit::StringView text)
+{
+    for (u32 i = 0; const char *name = TKit::Reflect<Type>::ToString(Type(i)); ++i)
+        if (text == name)
+        {
+            target = Type(i);
+            return true;
+        }
+    return false;
+}
+
 template <typename Root>
 ParamAssignResult AssignParamPath(Root &root, const TKit::Span<const TKit::StringView> path,
                                   const TKit::StringView text)
@@ -142,7 +158,7 @@ ParamAssignResult AssignParamPath(Root &root, const TKit::Span<const TKit::Strin
         if (path.GetFront() != field.Name)
             return;
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
         {
             if (path.GetSize() > 1)
                 outcome = AssignParamPath(
@@ -150,7 +166,10 @@ ParamAssignResult AssignParamPath(Root &root, const TKit::Span<const TKit::Strin
         }
         else if (path.GetSize() == 1)
         {
-            if constexpr (std::is_same_v<Type, bool>)
+            if constexpr (std::is_enum_v<Type>)
+                outcome =
+                    ParseParamEnum(field.Get(root), text) ? ParamAssignResult::Assigned : ParamAssignResult::Invalid;
+            else if constexpr (std::is_same_v<Type, bool>)
                 outcome =
                     ParseParamBool(field.Get(root), text) ? ParamAssignResult::Assigned : ParamAssignResult::Invalid;
             else if constexpr (std::is_same_v<Type, Onyx::Color>)
