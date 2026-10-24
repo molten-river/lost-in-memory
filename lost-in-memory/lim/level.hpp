@@ -62,12 +62,20 @@ class Level
         u32 PackedTint;
     };
 
+    /// A record's index in the region, and its slot among the count non-empty records in spawn order.
+    struct Placement
+    {
+        u32 Index;
+        u32 Slot;
+        u32 Count;
+    };
+
     void DecodeLethalPanels(ByteReader &reader, f32 density, const Palette &colors);
     void PlaceShellGoal(ByteReader &reader, const Onyx::Color &tint);
     /// Spawns one body per non-empty record; returns whether one of them is the goal.
     [[nodiscard]] bool SpawnRecords(const Region &region, const LevelParams &params, const ShapeKitParams &kit);
-    void SpawnRecord(TKit::Span<const std::byte> record, u32 index, FormKind kind, const LevelParams &params,
-                     const ShapeKitParams &kit);
+    void SpawnRecord(TKit::Span<const std::byte> record, const Placement &placement, FormKind kind,
+                     const LevelParams &params, const ShapeKitParams &kit);
     /// A still motion at a test bench cell, laid out row-major and centred on the view axis.
     [[nodiscard]] Body::Motion ComputeGridMotion(u32 cell) const;
 

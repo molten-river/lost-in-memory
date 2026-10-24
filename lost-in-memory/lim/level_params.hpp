@@ -6,6 +6,7 @@
 #include "lim/palette.hpp"
 #include "lim/player_params.hpp"
 #include "lim/shell_params.hpp"
+#include "lim/spawn_kind.hpp"
 #include "tuning/param_schema.hpp"
 
 #include "tkit/reflection/reflect.hpp"
@@ -16,6 +17,7 @@ struct FeatureFlags
 {
     TKIT_REFLECT_DECLARE(FeatureFlags)
     bool ShellVertexNoise = true;
+    SpawnKind Spawn = SpawnKind::Lattice;
 };
 
 template <> struct ParamSchema<FeatureFlags>
@@ -23,6 +25,10 @@ template <> struct ParamSchema<FeatureFlags>
     static constexpr ParamSpec<FeatureFlags> SHELL_VERTEX_NOISE{
         .Member = &FeatureFlags::ShellVertexNoise, .Hint = "Shell moves by drifting noise instead of travelling waves"};
     static constexpr TKit::FixedArray<ParamSpec<FeatureFlags>, 1> FIELDS{SHELL_VERTEX_NOISE};
+    static constexpr EnumSpec<FeatureFlags> SPAWN{
+        .Field = "Spawn",
+        .Hint = "Where bodies spawn: a golden-angle lattice, their own placement bytes, or a hash scatter"};
+    static constexpr TKit::FixedArray<EnumSpec<FeatureFlags>, 1> ENUMS{SPAWN};
 };
 
 struct LightParams

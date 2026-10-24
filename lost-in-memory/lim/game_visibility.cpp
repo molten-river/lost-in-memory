@@ -1,6 +1,7 @@
 #include "lim/game_visibility.hpp"
 
 #include "lim/params_reflection.hpp"
+#include "tuning/param_schema.hpp"
 
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"
@@ -70,7 +71,7 @@ constexpr TKit::FixedArray<SectionRule, 9> SECTION_RULES{{
     {"WalkMass", WITH_SHAPES, UNCONDITIONAL},
 }};
 
-constexpr TKit::FixedArray<FieldRule, 14> FIELD_RULES{{
+constexpr TKit::FixedArray<FieldRule, 15> FIELD_RULES{{
     {"Colors", "ShellTrough", WITH_SPHERE, UNCONDITIONAL},
     {"Colors", "ShellCrest", WITH_SPHERE, UNCONDITIONAL},
     {"Colors", "SolidLow", WITH_SHAPES, UNCONDITIONAL},
@@ -85,6 +86,7 @@ constexpr TKit::FixedArray<FieldRule, 14> FIELD_RULES{{
     {"Physics", "SafeSpawnFraction", MAIN_ONLY, UNCONDITIONAL},
     {"Records", "MaxFormRadiusShare", MAIN_ONLY, UNCONDITIONAL},
     {"Flags", "ShellVertexNoise", WITH_SPHERE, UNCONDITIONAL},
+    {"Flags", "Spawn", WITH_SPHERE, UNCONDITIONAL},
 }};
 
 /// Whether a reflected leaf named field sits in a struct held by a member named section.
@@ -95,7 +97,7 @@ template <typename Params>
     bool found = false;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &member) {
         using Type = TKIT_REFLECT_FIELD_TYPE(member);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             found = found || IsLeafReflected<Type>(section, field, member.Name);
         else
             found = found || (current == section && field == TKit::StringView{member.Name});
@@ -108,7 +110,7 @@ template <typename Params> [[nodiscard]] constexpr bool IsSectionReflected(const
     bool found = false;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &member) {
         using Type = TKIT_REFLECT_FIELD_TYPE(member);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             found = found || section == TKit::StringView{member.Name} || IsSectionReflected<Type>(section);
     });
     return found;

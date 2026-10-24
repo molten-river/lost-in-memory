@@ -1,6 +1,7 @@
 #pragma once
 
 #include "alias/alias.hpp"
+#include "lim/spawn_kind.hpp"
 
 #include "tkit/reflection/lim/form_params.hpp"
 #include "tkit/reflection/lim/formula_params.hpp"
@@ -8,5 +9,6 @@
 #include "tkit/reflection/lim/palette.hpp"
 #include "tkit/reflection/lim/player_params.hpp"
 #include "tkit/reflection/lim/shell_params.hpp"
+#include "tkit/reflection/lim/spawn_kind.hpp"
 #include "tkit/reflection/shapes/shape_kit_params.hpp"
 #include "tkit/reflection/shapes/walk_mass_params.hpp"

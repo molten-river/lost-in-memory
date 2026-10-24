@@ -3,6 +3,7 @@
 #include "lim/game_visibility.hpp"
 #include "lim/palette.hpp"
 #include "lim/params_reflection.hpp"
+#include "tuning/param_schema.hpp"
 
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"
@@ -52,7 +53,7 @@ template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKi
     bool found = false;
     TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
-        if constexpr (TKit::Reflect<Type>::Implemented)
+        if constexpr (ReflectedStruct<Type>)
             found = found || TKit::StringView{field.Name} == name;
     });
     return found;

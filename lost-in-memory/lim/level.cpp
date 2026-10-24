@@ -1,4 +1,6 @@
 #include "lim/level.hpp"
+#include "lim/spawn_factory.hpp"
+#include "lim/sphere_direction.hpp"
 
 #include "shapes/shape_factory.hpp"
 #include "shapes/shape_instance.hpp"
@@ -18,9 +20,8 @@ using Onyx::D3;
 namespace
 {
 constexpr f32 SHELL_CONTACT_EPSILON = 0.05f;
-constexpr f32 BYTE_MAX = f32(WALK_MASS_BYTE_MAX);
 constexpr f32 NIBBLE_MAX = f32(WALK_MASS_NIBBLE_MAX);
-constexpr f32 TAG_MAX = BYTE_MAX - 1.f;
+constexpr f32 TAG_MAX = f32(RECORD_BYTE_MAX) - 1.f;
 
 static_assert(RECORD_BYTES == WALK_MASS_RECORD_BYTES, "A record must hold exactly one walk mass");
 static_assert(GENOME_BYTES + RECORD_COUNT * RECORD_BYTES == REGION_BYTES, "The genome and records fill the region");
@@ -32,25 +33,6 @@ struct RecordDrift
     f32 MaxSpeed;
     f32 TumbleSpeed;
 };
-
-[[nodiscard]] u8 ReadByte(const TKit::Span<const std::byte> bytes, const usize index)
-{
-    return std::to_integer<u8>(bytes[index]);
-}
-
-[[nodiscard]] f32 ReadFraction(const TKit::Span<const std::byte> bytes, const usize index)
-{
-    return f32(ReadByte(bytes, index)) / BYTE_MAX;
-}
-
-/// A unit direction from an azimuth in turns and a height fraction, uniform over the sphere for uniform inputs.
-[[nodiscard]] f32v3 ToDirection(const f32 turns, const f32 height)
-{
-    const f32 z = 2.f * height - 1.f;
-    const f32 ring = TKit::Math::SquareRoot(TKit::Math::Max(1.f - z * z, 0.f));
-    const f32 azimuth = 2.f * TKit::Math::Pi() * turns;
-    return f32v3{ring * TKit::Math::Cosine(azimuth), ring * TKit::Math::Sine(azimuth), z};
-}
 
 [[nodiscard]] Onyx::Color ComputeTint(const Level::FormKind kind, const u32 tag, const u32 lethalTagMax,
                                       const Palette &colors)
@@ -196,7 +178,7 @@ void Level::PlaceShellGoal(ByteReader &reader, const Onyx::Color &tint)
     m_Shell.SetPanel(triangle, Shell::Panel::Goal, tint);
 }
 
-/// The genome's goal byte picks a record; the scan walks past empty records to the first one with a tag.
+/// The genome's goal byte picks a record, walking past empty ones; each spawned record gets its slot among them.
 bool Level::SpawnRecords(const Region &region, const LevelParams &params, const ShapeKitParams &kit)
 {
     const TKit::Span<const std::byte> bytes = region.GetBytes();
@@ -205,45 +187,51 @@ bool Level::SpawnRecords(const Region &region, const LevelParams &params, const 
     };
 
     TKit::Optional<u32> goal{};
-    const u32 seed = ReadByte(bytes, GENOME_GOAL_BYTE);
+    const u32 seed = ReadRecordByte(bytes, GENOME_GOAL_BYTE);
     for (u32 step = 0; step < RECORD_COUNT && !goal; ++step)
-        if (ReadByte(readRecord((seed + step) % u32(RECORD_COUNT)), RECORD_TAG_BYTE) != 0)
+        if (ReadRecordByte(readRecord((seed + step) % u32(RECORD_COUNT)), RECORD_TAG_BYTE) != 0)
             goal = (seed + step) % u32(RECORD_COUNT);
 
+    u32 count = 0;
+    for (u32 index = 0; index < RECORD_COUNT; ++index)
+        count += ReadRecordByte(readRecord(index), RECORD_TAG_BYTE) != 0 ? 1U : 0U;
+
     const u32 lethalTagMax = params.Mechanics.Records.LethalTagMax;
+    u32 slot = 0;
     for (u32 index = 0; index < RECORD_COUNT; ++index)
     {
         if (m_Mode == PlayMode::TestShapes && index >= m_TestBench.GridCount)
             break;
         const TKit::Span<const std::byte> record = readRecord(index);
-        const u8 tag = ReadByte(record, RECORD_TAG_BYTE);
+        const u8 tag = ReadRecordByte(record, RECORD_TAG_BYTE);
         if (tag == 0)
             continue;
         const FormKind kind = goal && *goal == index ? FormKind::Goal
                               : tag <= lethalTagMax  ? FormKind::Enemy
                                                      : FormKind::Solid;
-        SpawnRecord(record, index, kind, params, kit);
+        SpawnRecord(record, Placement{.Index = index, .Slot = slot++, .Count = count}, kind, params, kit);
     }
     return goal;
 }
 
-/// Bytes 7 to 14 place the body; one that reaches too far for the shell is rebaked once at a size that fits.
-void Level::SpawnRecord(const TKit::Span<const std::byte> record, const u32 index, const FormKind kind,
+/// The spawn strategy places the body and bytes 10 to 14 set it moving; one too large is rebaked once to fit.
+void Level::SpawnRecord(const TKit::Span<const std::byte> record, const Placement &placement, const FormKind kind,
                         const LevelParams &params, const ShapeKitParams &kit)
 {
     const MechanicsParams &mechanics = params.Mechanics;
     const PhysicsParams &physics = mechanics.Physics;
-    const u32 tint =
-        ComputeTint(kind, ReadByte(record, RECORD_TAG_BYTE), mechanics.Records.LethalTagMax, params.LookFeel.Colors)
-            .ToLinear()
-            .Pack();
+    const u32 tint = ComputeTint(kind, ReadRecordByte(record, RECORD_TAG_BYTE), mechanics.Records.LethalTagMax,
+                                 params.LookFeel.Colors)
+                         .ToLinear()
+                         .Pack();
 
     TKit::Scope<Shape> shape = ShapeFactory::Create(ShapeKind::WalkMass, record, kit);
     if (m_Mode == PlayMode::TestShapes)
     {
-        Form &form = m_Forms.Append(Form{.RigidBody = Body(std::move(shape), ComputeGridMotion(index), physics.Density),
-                                         .Kind = kind,
-                                         .PackedTint = tint});
+        Form &form = m_Forms.Append(
+            Form{.RigidBody = Body(std::move(shape), ComputeGridMotion(placement.Index), physics.Density),
+                 .Kind = kind,
+                 .PackedTint = tint});
         form.RigidBody.Anchor();
         return;
     }
@@ -252,7 +240,7 @@ void Level::SpawnRecord(const TKit::Span<const std::byte> record, const u32 inde
     if (shape->GetBoundingRadius() > maxReach)
     {
         const f32 size = TKit::Math::LinearLerp(kit.WalkMass.SizeMin, kit.WalkMass.SizeMax,
-                                                ReadFraction(record, WALK_MASS_SIZE_BYTE));
+                                                ReadRecordFraction(record, WALK_MASS_SIZE_BYTE));
         shape = ShapeFactory::Create(ShapeKind::WalkMass, record, kit, size * maxReach / shape->GetBoundingRadius());
     }
 
@@ -263,21 +251,21 @@ void Level::SpawnRecord(const TKit::Span<const std::byte> record, const u32 inde
     const f32 farthest = TKit::Math::Max(m_Shell.GetMinRadius() - bounding - physics.WallMargin, 0.f);
     const f32 nearest =
         TKit::Math::Min(kind == FormKind::Goal ? mechanics.Goal.MinSpawnDistance : safeDistance + bounding, farthest);
-    const f32 distance = TKit::Math::LinearLerp(nearest, farthest, ReadFraction(record, RECORD_SPAWN_DISTANCE_BYTE));
-    const f32 speed = TKit::Math::LinearLerp(drift.MinSpeed, drift.MaxSpeed, ReadFraction(record, RECORD_SPEED_BYTE));
+    const SpawnBand band{.Nearest = nearest, .Farthest = farthest};
+    const f32 speed =
+        TKit::Math::LinearLerp(drift.MinSpeed, drift.MaxSpeed, ReadRecordFraction(record, RECORD_SPEED_BYTE));
     const f32 tumbleScale = TKit::Math::LinearLerp(physics.MinTumbleScale, physics.MaxTumbleScale,
-                                                   ReadFraction(record, RECORD_TUMBLE_SCALE_BYTE));
-    const u8 tumble = ReadByte(record, RECORD_TUMBLE_AXIS_BYTE);
+                                                   ReadRecordFraction(record, RECORD_TUMBLE_SCALE_BYTE));
+    const u8 tumble = ReadRecordByte(record, RECORD_TUMBLE_AXIS_BYTE);
     const f32v3 tumbleAxis = ToDirection(f32(tumble >> 4) / (NIBBLE_MAX + 1.f), f32(tumble & 0x0F) / NIBBLE_MAX);
 
-    const Body::Motion motion{.Position = ToDirection(ReadFraction(record, RECORD_SPAWN_AZIMUTH_BYTE),
-                                                      ReadFraction(record, RECORD_SPAWN_Z_BYTE)) *
-                                          distance,
-                              .Orientation = Onyx::RotType<D3>::Identity,
-                              .Velocity = ToDirection(ReadFraction(record, RECORD_HEADING_AZIMUTH_BYTE),
-                                                      ReadFraction(record, RECORD_HEADING_Z_BYTE)) *
-                                          speed,
-                              .AngularVelocity = tumbleAxis * (drift.TumbleSpeed * tumbleScale)};
+    const Body::Motion motion{
+        .Position = SpawnFactory::Get(params.Flags.Spawn).Place(record, placement.Slot, placement.Count, band),
+        .Orientation = Onyx::RotType<D3>::Identity,
+        .Velocity = ToDirection(ReadRecordFraction(record, RECORD_HEADING_AZIMUTH_BYTE),
+                                ReadRecordFraction(record, RECORD_HEADING_Z_BYTE)) *
+                    speed,
+        .AngularVelocity = tumbleAxis * (drift.TumbleSpeed * tumbleScale)};
     m_Forms.Append(
         Form{.RigidBody = Body(std::move(shape), motion, physics.Density), .Kind = kind, .PackedTint = tint});
 }
