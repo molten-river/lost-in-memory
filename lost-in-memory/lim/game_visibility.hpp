@@ -7,7 +7,7 @@
 
 namespace Lim
 {
-/// The scope (by PlayMode) and feature-flag rules for every tuning section and field of LevelParams.
+/// The scope (by PlayMode) and feature-flag rules for every tuning section and field of LevelParams and the kit.
 class GameVisibility : public VisibilityStrategy
 {
   public:

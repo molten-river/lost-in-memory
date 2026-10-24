@@ -1,5 +1,4 @@
 #include "lim/shell.hpp"
-#include "lim/capacity.hpp"
 
 #include "onyx/resources.hpp"
 #include "tkit/container/fixed_array.hpp"

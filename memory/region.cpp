@@ -7,24 +7,6 @@ namespace Lim
 namespace
 {
 constexpr u32 MAX_ATTEMPTS = 64;
-constexpr usize MIN_NON_ZERO_PERCENT = 25;
-constexpr usize MIN_DISTINCT_VALUES = 32;
-constexpr usize BYTE_VALUES = 256;
-
-[[nodiscard]] bool IsVaried(const TKit::Span<const std::byte> bytes)
-{
-    TKit::FixedArray<bool, BYTE_VALUES> seen{};
-    usize nonZero = 0;
-    usize distinct = 0;
-    for (usize i = 0; i < bytes.GetSize(); ++i)
-    {
-        const u8 byte = std::to_integer<u8>(bytes[i]);
-        nonZero += byte != 0;
-        distinct += !seen[byte];
-        seen[byte] = true;
-    }
-    return nonZero * 100 >= bytes.GetSize() * MIN_NON_ZERO_PERCENT && distinct >= MIN_DISTINCT_VALUES;
-}
 
 [[nodiscard]] bool IsNonZero(const TKit::Span<const std::byte> bytes)
 {
@@ -33,21 +15,9 @@ constexpr usize BYTE_VALUES = 256;
             return true;
     return false;
 }
-
-[[nodiscard]] bool PassesFilter(const Region::Filter filter, const TKit::Span<const std::byte> bytes)
-{
-    switch (filter)
-    {
-    case Region::Filter::Varied:
-        return IsVaried(bytes);
-    case Region::Filter::NonZero:
-        return IsNonZero(bytes);
-    }
-    return false;
-}
 } // namespace
 
-TKit::Optional<Region> Region::Capture(const Filter filter)
+TKit::Optional<Region> Region::Capture()
 {
     std::mt19937_64 engine{std::random_device{}()};
     Region region;
@@ -55,7 +25,7 @@ TKit::Optional<Region> Region::Capture(const Filter filter)
     {
         const TKit::Optional<u64> address =
             Syscalls::ReadProcessMemorySnapshot(TKit::Span<std::byte>(region.m_Bytes), engine());
-        if (address && PassesFilter(filter, region.GetBytes()))
+        if (address && IsNonZero(region.GetBytes()))
         {
             region.m_Address = address.GetValue();
             return region;

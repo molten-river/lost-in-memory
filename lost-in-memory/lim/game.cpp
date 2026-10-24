@@ -1,7 +1,10 @@
 #include "lim/game.hpp"
 
 #include "lim/debug_tools.hpp"
+#include "lim/params_reflection.hpp"
 #include "look/window_specs.hpp"
+#include "shapes/shape_kit_file.hpp"
+#include "tuning/schema_rules.hpp"
 
 #include "onyx/onyx.hpp"
 
@@ -18,7 +21,7 @@ namespace
 {
 constexpr const char *WINDOW_TITLE = "Lost in Memory";
 
-constexpr f32 CAMERA_FAR = 250.f;
+constexpr f32 CAMERA_FAR_PER_SHELL_RADIUS = 4.f;
 constexpr f32 MAX_FRAME_SECONDS = 0.1f;
 constexpr u32 CAPTURE_ATTEMPTS = 3;
 
@@ -31,18 +34,16 @@ constexpr u32 CAPTURE_ATTEMPTS = 3;
 Game::Game(const PlayMode mode)
     : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE)})),
       m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
-      m_Context(Onyx::CreateRenderContext<D3>()), m_Params(Sanitize(LoadLevelParams())), m_Sandbox(*m_Window, m_Fonts),
-      m_Player(*m_Window), m_Mode(mode)
+      m_Context(Onyx::CreateRenderContext<D3>()), m_Params(Sanitize(LoadLevelParams())), m_Kit(LoadShapeKitParams()),
+      m_Sandbox(*m_Window, m_Fonts), m_Player(*m_Window), m_Mode(mode)
 {
-    m_Camera.PerspParameters.Far = CAMERA_FAR;
     m_Context->AddTarget(m_View);
 }
 
 void Game::Run()
 {
-    const Region::Filter filter = CaptureFilter();
     for (u32 attempt = 0; attempt < CAPTURE_ATTEMPTS && !m_Region; ++attempt)
-        m_Region = Region::Capture(filter);
+        m_Region = Region::Capture();
     if (!m_Region)
     {
         TKIT_LOG_ERROR("[LIM][GAME] Could not capture a memory region after {} attempts", CAPTURE_ATTEMPTS);
@@ -73,7 +74,7 @@ void Game::Run()
         if (m_State != State::Sandbox)
             m_Level.Draw(*m_Context, fade.Brightness);
         const SandboxScreen::Action action =
-            m_Sandbox.Draw(m_Params, m_Mode, m_Title, m_Region->GetAddress(), fade.Opacity);
+            m_Sandbox.Draw(m_Params, m_Kit, m_Mode, m_Title, m_Region->GetAddress(), fade.Opacity);
         if (m_State == State::Sandbox && fade.Opacity >= 1.f)
             m_PendingAction = action;
 
@@ -86,23 +87,33 @@ void Game::Restart()
 {
     m_Window->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
     m_View->ClearColor = m_Params.LookFeel.Colors.VoidBlack;
+    m_Camera.PerspParameters.Far = CAMERA_FAR_PER_SHELL_RADIUS * m_Params.Mechanics.Shell.Radius;
     m_Player.Configure(m_Params.LookFeel.Player);
-    m_Level.Generate(*m_Region, m_Params, m_Mode);
+    m_Level.Generate(*m_Region, m_Params, m_Kit, m_Mode);
     m_Player.Reset();
     m_Player.SetCursorLocked(true);
     m_View->RemoveFlags(Onyx::RenderViewFlag_Hidden);
     Enter(State::FadingIn);
 }
 
+/// Resets both roots on request, saves both files, then restarts from the kept bytes or a fresh capture.
 void Game::Rebuild(const SandboxScreen::Action action)
 {
+    if (action == SandboxScreen::Action::Reset)
+    {
+        m_Params = LevelParams{};
+        m_Kit = ShapeKitParams{};
+    }
     m_Params = Sanitize(m_Params);
+    ApplySchema(m_Kit);
     if (!SaveLevelParams(m_Params))
-        TKIT_LOG_ERROR("[LIM][GAME] Could not save the level params to defaults.yaml");
+        TKIT_LOG_ERROR("[LIM][GAME] Could not save the level params to {}", LIM_DEFAULTS_PATH);
+    if (!SaveShapeKitParams(m_Kit))
+        TKIT_LOG_ERROR("[LIM][GAME] Could not save the shape kit params to {}", LIM_SHAPE_KIT_DEFAULTS_PATH);
 
     if (action == SandboxScreen::Action::NewRegion)
     {
-        const TKit::Optional<Region> fresh = Region::Capture(CaptureFilter());
+        const TKit::Optional<Region> fresh = Region::Capture();
         if (fresh)
             m_Region = *fresh;
         else
@@ -167,10 +178,5 @@ void Game::Interrupt()
 {
     m_Title = SandboxScreen::Title::Interrupted;
     Enter(State::FadingOut);
-}
-
-Region::Filter Game::CaptureFilter() const
-{
-    return m_Params.Flags.StructuralDecode ? Region::Filter::NonZero : Region::Filter::Varied;
 }
 } // namespace Lim

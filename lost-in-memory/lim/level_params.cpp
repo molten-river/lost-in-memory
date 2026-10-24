@@ -13,30 +13,13 @@ namespace Lim
 namespace
 {
 constexpr f32 MAX_WAVE_AMPLITUDE_FRACTION = 0.4f;
-constexpr f32 MAX_FORM_SIZE_FRACTION = 0.25f;
 
 void FitToRadius(LevelParams &params)
 {
-    const f32 radius = params.Mechanics.Shell.Radius;
-    const f32 maxAmplitude = MAX_WAVE_AMPLITUDE_FRACTION * radius;
+    const f32 maxAmplitude = MAX_WAVE_AMPLITUDE_FRACTION * params.Mechanics.Shell.Radius;
     ShellMotionParams &motion = params.LookFeel.ShellMotion;
     motion.WaveAmplitude = TKit::Math::Min(motion.WaveAmplitude, maxAmplitude);
     motion.NoiseAmplitude = TKit::Math::Min(motion.NoiseAmplitude, maxAmplitude);
-
-    const f32 maxSize = MAX_FORM_SIZE_FRACTION * radius;
-    MechanicsParams &mechanics = params.Mechanics;
-    mechanics.Enemies.MinSize = TKit::Math::Min(mechanics.Enemies.MinSize, maxSize);
-    mechanics.Enemies.MaxSize = TKit::Math::Min(mechanics.Enemies.MaxSize, maxSize);
-    mechanics.Solids.MinSize = TKit::Math::Min(mechanics.Solids.MinSize, maxSize);
-    mechanics.Solids.MaxSize = TKit::Math::Min(mechanics.Solids.MaxSize, maxSize);
-    mechanics.Goal.Size = TKit::Math::Min(mechanics.Goal.Size, maxSize);
-
-    RecordParams &records = mechanics.Records;
-    records.EnemySizeMin = TKit::Math::Min(records.EnemySizeMin, maxSize);
-    records.EnemySizeMax = TKit::Math::Min(records.EnemySizeMax, maxSize);
-    records.SolidSizeMin = TKit::Math::Min(records.SolidSizeMin, maxSize);
-    records.SolidSizeMax = TKit::Math::Min(records.SolidSizeMax, maxSize);
-    records.GoalSize = TKit::Math::Min(records.GoalSize, maxSize);
 }
 
 static_assert(IsSchemaSound<LevelParams>(), "Every tuning field needs exactly one ParamSpec in its struct's schema");

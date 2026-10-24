@@ -32,12 +32,6 @@ struct FlagCondition
 };
 
 constexpr TKit::Span<const FlagCondition> UNCONDITIONAL{};
-constexpr TKit::FixedArray<FlagCondition, 1> DECODED{FlagCondition{"StructuralDecode", true}};
-constexpr TKit::FixedArray<FlagCondition, 1> GRAMMAR{FlagCondition{"StructuralDecode", false}};
-constexpr TKit::FixedArray<FlagCondition, 2> CARVED_GRAMMAR{FlagCondition{"StructuralDecode", false},
-                                                            FlagCondition{"CarvedShapes", true}};
-constexpr TKit::FixedArray<FlagCondition, 2> SMOOTH_GRAMMAR{FlagCondition{"StructuralDecode", false},
-                                                            FlagCondition{"CarvedShapes", false}};
 constexpr TKit::FixedArray<FlagCondition, 1> NOISE_SHELL{FlagCondition{"ShellVertexNoise", true}};
 constexpr TKit::FixedArray<FlagCondition, 1> WAVE_SHELL{FlagCondition{"ShellVertexNoise", false}};
 
@@ -64,21 +58,19 @@ struct FieldRule
     TKit::Span<const FlagCondition> Conditions;
 };
 
-constexpr TKit::FixedArray<SectionRule, 11> SECTION_RULES{{
+constexpr TKit::FixedArray<SectionRule, 9> SECTION_RULES{{
     {"ShellMotion", WITH_SPHERE, NOISE_SHELL},
-    {"Shapes", WITH_SHAPES, CARVED_GRAMMAR},
     {"Shell", WITH_SPHERE, UNCONDITIONAL},
     {"Enemies", MAIN_ONLY, UNCONDITIONAL},
     {"Solids", MAIN_ONLY, UNCONDITIONAL},
     {"Goal", MAIN_ONLY, UNCONDITIONAL},
     {"Physics", WITH_SHAPES, UNCONDITIONAL},
-    {"Records", WITH_SHAPES, DECODED},
-    {"Graph", WITH_SHAPES, DECODED},
-    {"Evolution", WITH_SHAPES, DECODED},
+    {"Records", WITH_SHAPES, UNCONDITIONAL},
     {"TestBench", SHAPES_ONLY, UNCONDITIONAL},
+    {"WalkMass", WITH_SHAPES, UNCONDITIONAL},
 }};
 
-constexpr TKit::FixedArray<FieldRule, 44> FIELD_RULES{{
+constexpr TKit::FixedArray<FieldRule, 14> FIELD_RULES{{
     {"Colors", "ShellTrough", WITH_SPHERE, UNCONDITIONAL},
     {"Colors", "ShellCrest", WITH_SPHERE, UNCONDITIONAL},
     {"Colors", "SolidLow", WITH_SHAPES, UNCONDITIONAL},
@@ -86,43 +78,13 @@ constexpr TKit::FixedArray<FieldRule, 44> FIELD_RULES{{
     {"ShellMotion", "WaveAmplitude", WITH_SPHERE, WAVE_SHELL},
     {"ShellMotion", "WaveSpeed", WITH_SPHERE, WAVE_SHELL},
     {"ShellMotion", "WaveFrequency", WITH_SPHERE, WAVE_SHELL},
-    {"Shapes", "MeshResolution", WITH_SHAPES, GRAMMAR},
-    {"Shapes", "SmoothSpread", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothSphereRadius", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothBoxHalfWidth", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothBoxHalfHeight", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothBoxHalfDepth", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothCapsuleRadius", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothCapsuleHalfLength", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothTorusMajorRadius", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Shapes", "SmoothTorusMinorRadius", WITH_SHAPES, SMOOTH_GRAMMAR},
-    {"Enemies", "MinCount", MAIN_ONLY, GRAMMAR},
-    {"Enemies", "MaxCount", MAIN_ONLY, GRAMMAR},
-    {"Enemies", "MinSize", WITH_SHAPES, GRAMMAR},
-    {"Enemies", "MaxSize", WITH_SHAPES, GRAMMAR},
-    {"Enemies", "MinPrimitives", WITH_SHAPES, GRAMMAR},
-    {"Enemies", "MaxPrimitives", WITH_SHAPES, GRAMMAR},
-    {"Enemies", "BlendRadius", WITH_SHAPES, GRAMMAR},
-    {"Solids", "MinCount", MAIN_ONLY, GRAMMAR},
-    {"Solids", "MaxCount", MAIN_ONLY, GRAMMAR},
-    {"Solids", "MinSize", WITH_SHAPES, GRAMMAR},
-    {"Solids", "MaxSize", WITH_SHAPES, GRAMMAR},
-    {"Solids", "MinPrimitives", WITH_SHAPES, GRAMMAR},
-    {"Solids", "MaxPrimitives", WITH_SHAPES, GRAMMAR},
-    {"Solids", "BlendRadius", WITH_SHAPES, GRAMMAR},
-    {"Goal", "ShellChance", MAIN_ONLY, GRAMMAR},
-    {"Goal", "Size", WITH_SHAPES, GRAMMAR},
-    {"Goal", "MinPrimitives", WITH_SHAPES, GRAMMAR},
-    {"Goal", "MaxPrimitives", WITH_SHAPES, GRAMMAR},
     {"Physics", "WallMargin", MAIN_ONLY, UNCONDITIONAL},
     {"Physics", "MinTumbleScale", MAIN_ONLY, UNCONDITIONAL},
     {"Physics", "MaxTumbleScale", MAIN_ONLY, UNCONDITIONAL},
     {"Physics", "MinSafeSpawnRadius", MAIN_ONLY, UNCONDITIONAL},
     {"Physics", "SafeSpawnFraction", MAIN_ONLY, UNCONDITIONAL},
+    {"Records", "MaxFormRadiusShare", MAIN_ONLY, UNCONDITIONAL},
     {"Flags", "ShellVertexNoise", WITH_SPHERE, UNCONDITIONAL},
-    {"Flags", "CarvedShapes", WITH_SHAPES, GRAMMAR},
-    {"Flags", "StructuralDecode", WITH_SHAPES, UNCONDITIONAL},
-    {"Flags", "ChainLinks", WITH_SHAPES, DECODED},
 }};
 
 /// Whether a reflected leaf named field sits in a struct held by a member named section.
@@ -170,7 +132,8 @@ template <typename Params> [[nodiscard]] constexpr bool IsSectionReflected(const
     };
 
     for (const SectionRule &rule : SECTION_RULES)
-        if (!IsSectionReflected<LevelParams>(rule.Section) || !areFlagsKnown(rule.Conditions))
+        if (!(IsSectionReflected<LevelParams>(rule.Section) || IsSectionReflected<ShapeKitParams>(rule.Section)) ||
+            !areFlagsKnown(rule.Conditions))
             return false;
     for (const FieldRule &rule : FIELD_RULES)
         if (!areFlagsKnown(rule.Conditions))

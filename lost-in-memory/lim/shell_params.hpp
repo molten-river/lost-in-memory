@@ -1,17 +1,18 @@
 #pragma once
 
 #include "alias/alias.hpp"
-#include "lim/capacity.hpp"
 #include "tuning/param_schema.hpp"
 
 #include "tkit/reflection/reflect.hpp"
 
 namespace Lim
 {
+inline constexpr u32 MAX_SUBDIVISIONS = 5;
+
 struct ShellParams
 {
     TKIT_REFLECT_DECLARE(ShellParams)
-    f32 Radius = 30.f;
+    f32 Radius = 120.f;
     u32 Subdivisions = 4;
     f32 LethalDensity = 0.06f;
 };
@@ -19,7 +20,11 @@ struct ShellParams
 template <> struct ParamSchema<ShellParams>
 {
     static constexpr TKit::FixedArray<ParamSpec<ShellParams>, 3> FIELDS{{
-        {.Member = &ShellParams::Radius, .Hint = "Rest radius of the sphere", .Flags = ParamSpecFlag_Min, .Min = 4.f},
+        {.Member = &ShellParams::Radius,
+         .Hint = "Rest radius of the sphere",
+         .Flags = BOTH_BOUNDS,
+         .Min = 20.f,
+         .Max = 400.f},
         {.Member = &ShellParams::Subdivisions,
          .Hint = "Icosphere subdivisions; each level quadruples the panels",
          .Flags = DRAGGED_BOUNDS,
@@ -37,10 +42,10 @@ template <> struct ParamSchema<ShellParams>
 struct ShellMotionParams
 {
     TKIT_REFLECT_DECLARE(ShellMotionParams)
-    f32 WaveAmplitude = 1.2f;
+    f32 WaveAmplitude = 4.8f;
     f32 WaveSpeed = 0.6f;
     f32 WaveFrequency = 3.f;
-    f32 NoiseAmplitude = 2.5f;
+    f32 NoiseAmplitude = 10.f;
     f32 NoiseSpeed = 0.3f;
     f32 NoiseScale = 2.5f;
     f32 TangentialShare = 0.35f;

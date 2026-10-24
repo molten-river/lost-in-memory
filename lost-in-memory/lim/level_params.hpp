@@ -5,7 +5,6 @@
 #include "lim/formula_params.hpp"
 #include "lim/palette.hpp"
 #include "lim/player_params.hpp"
-#include "lim/shape_params.hpp"
 #include "lim/shell_params.hpp"
 #include "tuning/param_schema.hpp"
 
@@ -17,21 +16,13 @@ struct FeatureFlags
 {
     TKIT_REFLECT_DECLARE(FeatureFlags)
     bool ShellVertexNoise = true;
-    bool CarvedShapes = true;
-    bool StructuralDecode = true;
-    bool ChainLinks = false;
 };
 
 template <> struct ParamSchema<FeatureFlags>
 {
-    static constexpr TKit::FixedArray<ParamSpec<FeatureFlags>, 4> FIELDS{{
-        {.Member = &FeatureFlags::ShellVertexNoise,
-         .Hint = "Shell moves by drifting noise instead of travelling waves"},
-        {.Member = &FeatureFlags::CarvedShapes, .Hint = "Byte stream builds machined forms instead of smooth blobs"},
-        {.Member = &FeatureFlags::StructuralDecode,
-         .Hint = "Forms come from the record layout instead of the byte stream"},
-        {.Member = &FeatureFlags::ChainLinks, .Hint = "Sections link in slot order instead of by proximity"},
-    }};
+    static constexpr ParamSpec<FeatureFlags> SHELL_VERTEX_NOISE{
+        .Member = &FeatureFlags::ShellVertexNoise, .Hint = "Shell moves by drifting noise instead of travelling waves"};
+    static constexpr TKit::FixedArray<ParamSpec<FeatureFlags>, 1> FIELDS{SHELL_VERTEX_NOISE};
 };
 
 struct LightParams
@@ -65,7 +56,6 @@ struct LookFeelParams
     TKIT_REFLECT_DECLARE(LookFeelParams)
     Palette Colors;
     ShellMotionParams ShellMotion;
-    ShapeLookParams Shapes;
     PlayerParams Player;
     LightParams Light;
     f32 FadeSeconds = 0.5f;
@@ -92,14 +82,11 @@ struct MechanicsParams
 {
     TKIT_REFLECT_DECLARE(MechanicsParams)
     ShellParams Shell;
-    ShapeParams Shapes;
     EnemyParams Enemies;
     SolidParams Solids;
     GoalParams Goal;
     PhysicsParams Physics;
     RecordParams Records;
-    GraphParams Graph;
-    EvolutionParams Evolution;
     TestBenchParams TestBench;
 };
 
@@ -117,6 +104,6 @@ struct LevelParams
 /// Writes defaults.yaml through a temp file and a rename; returns whether it succeeded.
 bool SaveLevelParams(const LevelParams &params);
 
-/// Orders and clamps every field by its schema, then fits form sizes and shell motion to the shell radius.
+/// Orders and clamps every field by its schema, then fits the shell motion to the shell radius.
 [[nodiscard]] LevelParams Sanitize(LevelParams params);
 } // namespace Lim

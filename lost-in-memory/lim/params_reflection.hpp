@@ -7,5 +7,6 @@
 #include "tkit/reflection/lim/level_params.hpp"
 #include "tkit/reflection/lim/palette.hpp"
 #include "tkit/reflection/lim/player_params.hpp"
-#include "tkit/reflection/lim/shape_params.hpp"
 #include "tkit/reflection/lim/shell_params.hpp"
+#include "tkit/reflection/shapes/shape_kit_params.hpp"
+#include "tkit/reflection/shapes/walk_mass_params.hpp"

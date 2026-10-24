@@ -19,6 +19,7 @@ constexpr TKit::FixedArray<PanelTab, 3> TABS{{
     {"Mechanics", "Core Mechanics"},
     {"Flags", "Feature flags"},
 }};
+constexpr TKit::FixedArray<PanelTab, 1> KIT_TABS{PanelTab{"WalkMass", "Shape kit"}};
 
 constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"SAME BYTES", "NEW REGION"};
 
@@ -57,15 +58,16 @@ template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKi
     return found;
 }
 
-[[nodiscard]] constexpr bool AreTabsKnown()
+template <typename Root> [[nodiscard]] constexpr bool AreTabsKnown(const TKit::Span<const PanelTab> tabs)
 {
-    for (const PanelTab &tab : TABS)
-        if (!IsStructMember<LevelParams>(tab.Field))
+    for (const PanelTab &tab : tabs)
+        if (!IsStructMember<Root>(tab.Field))
             return false;
     return true;
 }
 
-static_assert(AreTabsKnown(), "Every tab must name a struct member of LevelParams");
+static_assert(AreTabsKnown<LevelParams>(TABS) && AreTabsKnown<ShapeKitParams>(KIT_TABS),
+              "Every tab must name a struct member of its root");
 
 [[nodiscard]] TKit::StringView HeadingText(const SandboxScreen::Title title)
 {
@@ -92,32 +94,35 @@ SandboxScreen::SandboxScreen(Onyx::Window &window, FontLibrary &fonts) : m_Panel
 {
 }
 
-SandboxScreen::Action SandboxScreen::Draw(LevelParams &params, const PlayMode mode, const Title title,
-                                          const u64 address, const f32 opacity)
+SandboxScreen::Action SandboxScreen::Draw(LevelParams &params, ShapeKitParams &kit, const PlayMode mode,
+                                          const Title title, const u64 address, const f32 opacity)
 {
     const UiTheme theme = ToUiTheme(params.LookFeel.Colors);
     const Action action = m_Panel.Begin(theme, params.LookFeel.TextSize, opacity)
-                              ? DrawPanel(params, mode, title, address)
+                              ? DrawPanel(params, kit, mode, title, address)
                               : Action::None;
     m_Panel.End();
     return action;
 }
 
-SandboxScreen::Action SandboxScreen::DrawPanel(LevelParams &params, const PlayMode mode, const Title title,
-                                               const u64 address)
+SandboxScreen::Action SandboxScreen::DrawPanel(LevelParams &params, ShapeKitParams &kit, const PlayMode mode,
+                                               const Title title, const u64 address)
 {
     TKit::StringView lineStorage{};
     const TKit::Span<const TKit::StringView> lines = ModeLines(mode, lineStorage);
     const TKit::StaticString32 source = TKit::StaticString32::Format("SOURCE 0x{:016X}", address);
     m_Panel.Header(HeadingText(title), lines, source);
+    const bool reset = m_Panel.CornerButton("RESET");
 
     const GameVisibility visibility{mode, params.Flags};
     m_Panel.BeginTabs();
-    m_Panel.Tabs(params, m_Defaults, visibility, TKit::Span<const PanelTab>(TABS.GetData(), TABS.GetSize()));
+    m_Panel.Tabs(params, m_Defaults, visibility, TABS);
+    m_Panel.Tabs(kit, m_KitDefaults, visibility, KIT_TABS);
     m_Panel.EndTabs();
 
-    const TKit::Optional<u32> pressed =
-        m_Panel.Buttons(TKit::Span<const TKit::StringView>(BUTTON_LABELS.GetData(), BUTTON_LABELS.GetSize()));
+    const TKit::Optional<u32> pressed = m_Panel.Buttons(BUTTON_LABELS);
+    if (reset)
+        return Action::Reset;
     if (!pressed)
         return Action::None;
     return *pressed == 0 ? Action::SameBytes : Action::NewRegion;

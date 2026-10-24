@@ -6,8 +6,9 @@
 #include "lim/level_params.hpp"
 #include "lim/play_mode.hpp"
 #include "lim/player.hpp"
-#include "memory/region.hpp"
 #include "lim/sandbox_screen.hpp"
+#include "memory/region.hpp"
+#include "shapes/shape_kit_params.hpp"
 
 #include "onyx/camera.hpp"
 #include "onyx/context.hpp"
@@ -49,7 +50,6 @@ class Game
     [[nodiscard]] Fade Step(f32 deltaTime, bool enterTriggered);
     void Enter(State state);
     void Interrupt();
-    [[nodiscard]] Region::Filter CaptureFilter() const;
 
     Onyx::Window *m_Window;
     Onyx::Camera<Onyx::D3> m_Camera{};
@@ -57,6 +57,7 @@ class Game
     Onyx::RenderContext<Onyx::D3> *m_Context;
     FontLibrary m_Fonts{};
     LevelParams m_Params;
+    ShapeKitParams m_Kit;
     SandboxScreen m_Sandbox;
     Player m_Player;
     TKit::Optional<Region> m_Region{};

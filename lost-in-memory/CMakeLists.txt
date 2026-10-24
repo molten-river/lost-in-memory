@@ -5,12 +5,8 @@ set(SOURCES
     lim/main.cpp
     lim/level_params.cpp
     lim/shell.cpp
-    lim/blob.cpp
     lim/player.cpp
-    lim/shape_grammar.cpp
     lim/body.cpp
-    lim/world_decoder.cpp
-    lim/section_graph.cpp
     lim/level.cpp
     lim/sandbox_screen.cpp
     lim/game_visibility.cpp
@@ -24,7 +20,6 @@ tkit_register_for_reflection(lost-in-memory SOURCES
     lim/palette.hpp
     lim/player_params.hpp
     lim/shell_params.hpp
-    lim/shape_params.hpp
     lim/form_params.hpp
     lim/formula_params.hpp)
 tkit_configure_compile_link_options(lost-in-memory NO_EXCEPTIONS NO_RTTI)
