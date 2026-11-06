@@ -17,14 +17,14 @@ void FrameTimings::Record(const Sample &sample)
     };
     smooth(m_Frame, sample.Frame);
     smooth(m_Scene, sample.Scene);
-    smooth(m_Rewrite, sample.Rewrite);
+    smooth(m_Evolve, sample.Evolve);
     smooth(m_Panel, sample.Panel);
     smooth(m_Render, sample.Render);
 }
 
 FrameTimings::Line FrameTimings::Describe() const
 {
-    return Line::Format("FRAME {:.1f} MS  SCENE {:.1f}  REWRITE {:.1f}  PANEL {:.1f}  RENDER {:.1f}", m_Frame, m_Scene,
-                        m_Rewrite, m_Panel, m_Render);
+    return Line::Format("FRAME {:.1f} MS  SCENE {:.1f}  EVOLVE {:.1f}  PANEL {:.1f}  RENDER {:.1f}", m_Frame, m_Scene,
+                        m_Evolve, m_Panel, m_Render);
 }
 } // namespace Lim

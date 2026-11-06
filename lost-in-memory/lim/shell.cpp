@@ -66,7 +66,7 @@ constexpr TKit::FixedArray<f32v3, 12> ICOSAHEDRON_VERTICES{
     f32v3{0.f, -1.f, -GOLDEN_RATIO}, f32v3{0.f, 1.f, -GOLDEN_RATIO},  f32v3{GOLDEN_RATIO, 0.f, -1.f},
     f32v3{GOLDEN_RATIO, 0.f, 1.f},   f32v3{-GOLDEN_RATIO, 0.f, -1.f}, f32v3{-GOLDEN_RATIO, 0.f, 1.f}};
 
-constexpr TKit::FixedArray<u32v3, 20> ICOSAHEDRON_FACES{
+constexpr TKit::FixedArray<u32v3, Shell::ICOSAHEDRON_FACE_COUNT> ICOSAHEDRON_FACES{
     u32v3{0, 11, 5}, u32v3{0, 5, 1},  u32v3{0, 1, 7},   u32v3{0, 7, 10}, u32v3{0, 10, 11},
     u32v3{1, 5, 9},  u32v3{5, 11, 4}, u32v3{11, 10, 2}, u32v3{10, 7, 6}, u32v3{7, 1, 8},
     u32v3{3, 9, 4},  u32v3{3, 4, 2},  u32v3{3, 2, 6},   u32v3{3, 6, 8},  u32v3{3, 8, 9},

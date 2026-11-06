@@ -3,7 +3,6 @@
 #include "alias/alias.hpp"
 #include "look/font_library.hpp"
 #include "shapes/shape_kit_params.hpp"
-#include "shapes/shape_renderer.hpp"
 #include "tuning/param_panel.hpp"
 #include "viewer/camera_registry.hpp"
 #include "viewer/camera_strategy.hpp"
@@ -80,7 +79,6 @@ class Viewer
     const ShapeKitParams m_KitDefaults{};
     ParamPanel m_Panel;
     RecordHud m_Hud{};
-    ShapeRenderer m_Renderer{};
     RecordGallery m_Gallery{};
     CameraRegistry m_Cameras{};
     PlaybackClock m_Clock{};
@@ -94,5 +92,6 @@ class Viewer
     TKit::Clock m_ShapesSettle{};
     bool m_CameraActive = false;
     bool m_AwaitingClickRelease = false;
+    bool m_PointerEntered = false;
 };
 } // namespace Lim

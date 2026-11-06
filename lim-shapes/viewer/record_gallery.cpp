@@ -29,6 +29,13 @@ struct PageGrid
     u32 Count;
 };
 
+/// The records on screen, as a run of First and the Count after it.
+struct VisibleRecords
+{
+    u32 First;
+    u32 Count;
+};
+
 [[nodiscard]] PageGrid MakePageGrid(const u32 selection, const GalleryParams &layout)
 {
     const u32 columns = TKit::Math::Max(layout.Columns, 1U);
@@ -42,6 +49,12 @@ struct PageGrid
                     .Visible = TKit::Math::Min(cells, RecordGallery::RECORD_COUNT - first),
                     .Index = index,
                     .Count = (RecordGallery::RECORD_COUNT + cells - 1) / cells};
+}
+
+[[nodiscard]] VisibleRecords SelectVisible(const bool single, const u32 selection, const PageGrid &grid)
+{
+    return single ? VisibleRecords{.First = selection, .Count = 1}
+                  : VisibleRecords{.First = grid.First, .Count = grid.Visible};
 }
 
 /// Cells read top to bottom and left to right, centred on the origin in the XY plane.
@@ -59,10 +72,16 @@ void RecordGallery::Bake(const Region &region, const ShapeKitParams &params)
     Rebake(params);
 }
 
+/// Every record loads into the renderer, so moving the selection or the page never registers geometry.
 void RecordGallery::Rebake(const ShapeKitParams &params)
 {
+    TKit::FixedArray<const Shape *, RECORD_COUNT> shapes;
     for (u32 i = 0; i < RECORD_COUNT; ++i)
+    {
         m_Shapes[i] = ShapeFactory::Create(ShapeKind::WalkMass, GetRecord(i), params);
+        shapes[i] = m_Shapes[i].Get();
+    }
+    m_Renderer.Load(shapes);
 }
 
 void RecordGallery::ToggleMode()
@@ -78,31 +97,35 @@ bool RecordGallery::MoveSelection(const i32 offset, const GalleryParams &layout)
     return m_Mode == Mode::Grid && MakePageGrid(m_Selection, layout).Index != previousPage;
 }
 
-void RecordGallery::Rewrite(ShapeRenderer &renderer, const f32 seconds, const ViewerPalette &colors,
-                            const GalleryParams &layout)
+void RecordGallery::Evolve(const f32 seconds, const GalleryParams &layout)
+{
+    const VisibleRecords visible =
+        SelectVisible(m_Mode == Mode::Single, m_Selection, MakePageGrid(m_Selection, layout));
+    for (u32 index = visible.First; index < visible.First + visible.Count; ++index)
+        m_Shapes[index]->Evolve(seconds);
+}
+
+void RecordGallery::Draw(Onyx::RenderContext<Onyx::D3> &context, const ViewerPalette &colors,
+                         const GalleryParams &layout) const
 {
     const bool single = m_Mode == Mode::Single;
     const PageGrid grid = MakePageGrid(m_Selection, layout);
-    const u32 first = single ? m_Selection : grid.First;
-    const u32 count = single ? 1 : grid.Visible;
+    const VisibleRecords visible = SelectVisible(single, m_Selection, grid);
 
     TKit::FixedArray<ShapeInstance, RECORD_COUNT> instances;
-    for (u32 slot = 0; slot < count; ++slot)
+    for (u32 slot = 0; slot < visible.Count; ++slot)
     {
-        const u32 index = first + slot;
-        Shape &shape = *m_Shapes[index];
-        shape.Evolve(seconds);
-
+        const u32 index = visible.First + slot;
         const f32 tag = f32(std::to_integer<u32>(GetRecord(index)[TAG_BYTE])) / f32(WALK_MASS_BYTE_MAX);
         const Onyx::Color tint =
             !single && index == m_Selection ? colors.Selected : Mix(colors.ShapeLow, colors.ShapeHigh, tag);
         const f32v3 position = single ? f32v3{0.f} : CellPosition(slot, grid, layout.Spacing);
-        instances[slot] = ShapeInstance{.Shape = &shape,
+        instances[slot] = ShapeInstance{.Slot = index,
                                         .Transform = Onyx::Transform<Onyx::D3>::ComputeTransform(
                                             position, f32v3{1.f}, Onyx::RotType<Onyx::D3>::Identity),
-                                        .PackedColor = tint.ToLinear().Pack()};
+                                        .Tint = tint};
     }
-    renderer.Rewrite(TKit::Span<const ShapeInstance>(instances.GetData(), count));
+    m_Renderer.Draw(context, TKit::Span<const ShapeInstance>(instances.GetData(), visible.Count));
 }
 
 CameraFocus RecordGallery::GetFocus(const GalleryParams &layout) const

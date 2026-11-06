@@ -19,6 +19,10 @@ class Shell
         Goal
     };
 
+    static constexpr u32 ICOSAHEDRON_FACE_COUNT = 20;
+    /// Mesh vertices at MAX_SUBDIVISIONS, three per triangle.
+    static constexpr u32 MAX_VERTEX_COUNT = 3 * ICOSAHEDRON_FACE_COUNT * (1U << (2 * MAX_SUBDIVISIONS));
+
     Shell();
     ~Shell();
 

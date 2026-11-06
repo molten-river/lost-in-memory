@@ -8,30 +8,39 @@
 #include "onyx/context.hpp"
 #include "onyx/handle.hpp"
 #include "tkit/container/span.hpp"
+#include "tkit/container/static_array.hpp"
+#include "tkit/utils/optional.hpp"
 
 namespace Lim
 {
-/// Owns one dynamic mesh sized once for the worst case and rewrites it from posed shapes without allocating.
+/// Registers every hull piece of the loaded shapes once as a static mesh, then draws them at their current poses.
 class ShapeRenderer
 {
   public:
     static constexpr u32 MAX_SHAPES = 63;
-    static constexpr u32 VERTEX_CAPACITY = MAX_SHAPES * Shape::MAX_HULLS * 3 * ConvexHull::MAX_TRIANGLES;
+    static constexpr u32 MAX_MESHES = MAX_SHAPES * Shape::MAX_HULLS;
+    /// Pool vertices when every mesh is a hull of MAX_TRIANGLES flat-shaded triangles, with one index per vertex.
+    static constexpr u32 MAX_VERTICES = MAX_MESHES * 3 * ConvexHull::MAX_TRIANGLES;
 
-    ShapeRenderer();
+    ShapeRenderer() = default;
     ~ShapeRenderer();
 
     ShapeRenderer(const ShapeRenderer &) = delete;
     ShapeRenderer &operator=(const ShapeRenderer &) = delete;
 
-    /// Returns false when some shapes did not fit; those are left out and the first overflow is logged.
-    bool Rewrite(TKit::Span<const ShapeInstance> instances);
-    void Draw(Onyx::RenderContext<Onyx::D3> &context) const;
-    [[nodiscard]] u32 GetVertexCount() const;
+    /// Replaces the pool with one mesh per piece of each shape, whose index becomes its slot; never call it per frame.
+    void Load(TKit::Span<const Shape *const> shapes);
+    void Draw(Onyx::RenderContext<Onyx::D3> &context, TKit::Span<const ShapeInstance> instances) const;
 
   private:
-    Onyx::Resource m_Mesh;
-    u32 m_VertexCount = 0;
-    bool m_HasOverflowed = false;
+    struct LoadedShape
+    {
+        const Shape *Source;
+        u32 FirstMesh;
+    };
+
+    TKit::Optional<Onyx::ResourcePool> m_Pool{};
+    TKit::StaticArray<LoadedShape, MAX_SHAPES> m_Shapes{};
+    TKit::StaticArray<Onyx::Resource, MAX_MESHES> m_Meshes{};
 };
 } // namespace Lim

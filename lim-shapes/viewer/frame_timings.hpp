@@ -18,7 +18,7 @@ class FrameTimings
     {
         TKit::Timespan Frame;
         TKit::Timespan Scene;
-        TKit::Timespan Rewrite;
+        TKit::Timespan Evolve;
         TKit::Timespan Panel;
         TKit::Timespan Render;
     };
@@ -29,7 +29,7 @@ class FrameTimings
   private:
     f32 m_Frame = 0.f;
     f32 m_Scene = 0.f;
-    f32 m_Rewrite = 0.f;
+    f32 m_Evolve = 0.f;
     f32 m_Panel = 0.f;
     f32 m_Render = 0.f;
 };

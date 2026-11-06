@@ -92,7 +92,11 @@ void Level::Generate(const Region &region, const LevelParams &params, const Shap
 
     if ((mode == PlayMode::TestSphere || !SpawnRecords(region, params, kit)) && hasShell)
         PlaceShellGoal(reader, colors.GoalGreen);
-    RewriteShapes();
+
+    TKit::FixedArray<const Shape *, RECORD_COUNT> shapes;
+    for (u32 i = 0; i < m_Forms.GetSize(); ++i)
+        shapes[i] = &m_Forms[i].RigidBody.GetShape();
+    m_Renderer.Load(TKit::Span<const Shape *const>(shapes.GetData(), m_Forms.GetSize()));
 
     if (hasShell)
         m_Shell.Update(m_Time);
@@ -110,7 +114,6 @@ void Level::Update(const f32 deltaTime, Player &player)
     for (Form &form : m_Forms)
         form.RigidBody.Evolve(m_Time);
     Simulate(deltaTime);
-    RewriteShapes();
 
     const f32 radius = player.GetRadius();
     for (const Form &form : m_Forms)
@@ -132,7 +135,6 @@ void Level::Update(const f32 deltaTime, Player &player)
     m_Outcome = DetectOutcome(player.GetPosition(), radius);
 }
 
-/// The kit shapes carry their tints in their vertices, so they draw before the shell sets its fill colour.
 void Level::Draw(Onyx::RenderContext<D3> &context, const f32 brightness) const
 {
     const f32 scale = TKit::Math::Clamp(brightness, 0.f, 1.f);
@@ -148,7 +150,10 @@ void Level::Draw(Onyx::RenderContext<D3> &context, const f32 brightness) const
                                                       .LightRadius = m_LightRadius,
                                                       .Intensity = m_Light.CoreIntensity * scale});
 
-    m_Renderer.Draw(context);
+    TKit::FixedArray<ShapeInstance, RECORD_COUNT> instances;
+    for (u32 i = 0; i < m_Forms.GetSize(); ++i)
+        instances[i] = m_Forms[i].RigidBody.GetInstance(i, m_Forms[i].Tint);
+    m_Renderer.Draw(context, TKit::Span<const ShapeInstance>(instances.GetData(), m_Forms.GetSize()));
     if (m_Mode != PlayMode::TestShapes)
         m_Shell.Draw(context);
     context.Pop();
@@ -220,10 +225,8 @@ void Level::SpawnRecord(const TKit::Span<const std::byte> record, const Placemen
 {
     const MechanicsParams &mechanics = params.Mechanics;
     const PhysicsParams &physics = mechanics.Physics;
-    const u32 tint = ComputeTint(kind, ReadRecordByte(record, RECORD_TAG_BYTE), mechanics.Records.LethalTagMax,
-                                 params.LookFeel.Colors)
-                         .ToLinear()
-                         .Pack();
+    const Onyx::Color tint = ComputeTint(kind, ReadRecordByte(record, RECORD_TAG_BYTE), mechanics.Records.LethalTagMax,
+                                         params.LookFeel.Colors);
 
     TKit::Scope<Shape> shape = ShapeFactory::Create(ShapeKind::WalkMass, record, kit);
     if (m_Mode == PlayMode::TestShapes)
@@ -231,7 +234,7 @@ void Level::SpawnRecord(const TKit::Span<const std::byte> record, const Placemen
         Form &form = m_Forms.Append(
             Form{.RigidBody = Body(std::move(shape), ComputeGridMotion(placement.Index), physics.Density),
                  .Kind = kind,
-                 .PackedTint = tint});
+                 .Tint = tint});
         form.RigidBody.Anchor();
         return;
     }
@@ -266,8 +269,7 @@ void Level::SpawnRecord(const TKit::Span<const std::byte> record, const Placemen
                                 ReadRecordFraction(record, RECORD_HEADING_Z_BYTE)) *
                     speed,
         .AngularVelocity = tumbleAxis * (drift.TumbleSpeed * tumbleScale)};
-    m_Forms.Append(
-        Form{.RigidBody = Body(std::move(shape), motion, physics.Density), .Kind = kind, .PackedTint = tint});
+    m_Forms.Append(Form{.RigidBody = Body(std::move(shape), motion, physics.Density), .Kind = kind, .Tint = tint});
 }
 
 Body::Motion Level::ComputeGridMotion(const u32 cell) const
@@ -299,14 +301,6 @@ void Level::Simulate(const f32 deltaTime)
         for (Form &form : m_Forms)
             form.RigidBody.CollideWithShell(m_Shell, m_Physics.Restitution);
     }
-}
-
-void Level::RewriteShapes()
-{
-    TKit::FixedArray<ShapeInstance, RECORD_COUNT> instances;
-    for (u32 i = 0; i < m_Forms.GetSize(); ++i)
-        instances[i] = m_Forms[i].RigidBody.GetInstance(m_Forms[i].PackedTint);
-    m_Renderer.Rewrite(TKit::Span<const ShapeInstance>(instances.GetData(), m_Forms.GetSize()));
 }
 
 Level::Outcome Level::DetectOutcome(const f32v3 &position, const f32 radius) const

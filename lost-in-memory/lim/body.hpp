@@ -4,6 +4,8 @@
 #include "shapes/shape.hpp"
 #include "shapes/shape_instance.hpp"
 
+#include "onyx/color.hpp"
+
 #include "tkit/math/quaternion.hpp"
 #include "tkit/math/tensor.hpp"
 #include "tkit/memory/ptr.hpp"
@@ -46,7 +48,8 @@ class Body
     [[nodiscard]] TKit::Optional<Penetration> Penetrate(const f32v3 &center, f32 radius) const;
     [[nodiscard]] const f32v3 &GetPosition() const;
     [[nodiscard]] f32 GetBoundingRadius() const;
-    [[nodiscard]] ShapeInstance GetInstance(u32 packedColor) const;
+    [[nodiscard]] const Shape &GetShape() const;
+    [[nodiscard]] ShapeInstance GetInstance(u32 slot, const Onyx::Color &tint) const;
 
   private:
     struct Contact

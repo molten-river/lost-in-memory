@@ -9,6 +9,7 @@
 #include "viewer/camera_strategy.hpp"
 #include "viewer/viewer_params.hpp"
 
+#include "onyx/context.hpp"
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"
 #include "tkit/memory/ptr.hpp"
@@ -39,14 +40,20 @@ class RecordGallery
         u32 Count;
     };
 
+    RecordGallery() = default;
+
+    RecordGallery(const RecordGallery &) = delete;
+    RecordGallery &operator=(const RecordGallery &) = delete;
+
     /// Keeps a copy of the region, so later rebakes reuse the same bytes.
     void Bake(const Region &region, const ShapeKitParams &params);
     void Rebake(const ShapeKitParams &params);
     void ToggleMode();
     /// Moves the selection by offset records, wrapping around; returns whether the grid now shows another page.
     [[nodiscard]] bool MoveSelection(i32 offset, const GalleryParams &layout);
-    /// Poses the visible shapes at absolute time seconds and writes them into the renderer.
-    void Rewrite(ShapeRenderer &renderer, f32 seconds, const ViewerPalette &colors, const GalleryParams &layout);
+    /// Poses the visible shapes at absolute time seconds.
+    void Evolve(f32 seconds, const GalleryParams &layout);
+    void Draw(Onyx::RenderContext<Onyx::D3> &context, const ViewerPalette &colors, const GalleryParams &layout) const;
 
     [[nodiscard]] CameraFocus GetFocus(const GalleryParams &layout) const;
     /// A focus whose radius bounds everything the current mode shows: the selection's page or the selection alone.
@@ -60,6 +67,7 @@ class RecordGallery
   private:
     Region m_Region{};
     TKit::FixedArray<TKit::Scope<Shape>, RECORD_COUNT> m_Shapes{};
+    ShapeRenderer m_Renderer{};
     u32 m_Selection = 0;
     Mode m_Mode = Mode::Grid;
 };

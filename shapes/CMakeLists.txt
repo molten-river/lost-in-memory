@@ -3,7 +3,6 @@ project(shapes)
 
 add_library(shapes STATIC
     convex_hull.cpp
-    mesh_builder.cpp
     motion_factory.cpp
     piston_motion.cpp
     ratchet_motion.cpp

@@ -32,14 +32,19 @@ void WalkMass::Evolve(const f32 seconds)
         m_Samples[i] = f32v3(m_Poses[m_SampleSources[i].Piece] * f32v4{m_SampleSources[i].Local, 1.f});
 }
 
-bool WalkMass::Emit(MeshBuilder &builder, const f32m4 &transform, const u32 packedColor) const
+u32 WalkMass::GetPieceCount() const
 {
-    if (builder.GetVertexCount() + m_VertexCount > builder.GetCapacity())
-        return false;
-    for (u32 i = 0; i < m_Pieces.GetSize(); ++i)
-        if (!builder.AppendHull(m_Pieces[i].Hull, transform * m_Poses[i], packedColor))
-            return false;
-    return true;
+    return m_Pieces.GetSize();
+}
+
+const ConvexHull &WalkMass::GetPieceHull(const u32 piece) const
+{
+    return m_Pieces[piece].Hull;
+}
+
+const f32m4 &WalkMass::GetPiecePose(const u32 piece) const
+{
+    return m_Poses[piece];
 }
 
 f32 WalkMass::Distance(const f32v3 &local) const

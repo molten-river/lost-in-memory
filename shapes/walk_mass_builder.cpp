@@ -563,8 +563,6 @@ void WalkMassBuilder::Seal(WalkMass &mass) const
             }
             mass.m_BoundingRadius = TKit::Math::Max(mass.m_BoundingRadius, reach + TKit::Math::Norm(anchor));
         }
-        piece.Hull.ForEachTriangle(
-            [&mass](const f32v3 &, const f32v3 &, const f32v3 &, const f32v3 &) { mass.m_VertexCount += 3; });
     }
     GatherSamples(mass);
     mass.Reset();

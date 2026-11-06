@@ -59,7 +59,7 @@ class Level
     {
         Body RigidBody;
         FormKind Kind;
-        u32 PackedTint;
+        Onyx::Color Tint;
     };
 
     /// A record's index in the region, and its slot among the count non-empty records in spawn order.
@@ -80,7 +80,6 @@ class Level
     [[nodiscard]] Body::Motion ComputeGridMotion(u32 cell) const;
 
     void Simulate(f32 deltaTime);
-    void RewriteShapes();
     [[nodiscard]] Outcome DetectOutcome(const f32v3 &position, f32 radius) const;
 
     Shell m_Shell;

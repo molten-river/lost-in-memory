@@ -1,6 +1,9 @@
 #include "lim/debug_tools.hpp"
 #include "lim/game.hpp"
 #include "lim/play_mode.hpp"
+#include "lim/shell.hpp"
+#include "look/engine_specs.hpp"
+#include "shapes/shape_renderer.hpp"
 
 #include "onyx/core.hpp"
 #include "onyx/resources.hpp"
@@ -40,7 +43,10 @@ int main(int argc, char **argv)
 {
     const Lim::PlayMode mode = ParseMode(argc, argv);
 
-    Onyx::Initialize();
+    Onyx::Initialize(Lim::MakeEngineSpecs(Lim::EngineBudget{.StaticMeshes = Lim::ShapeRenderer::MAX_MESHES,
+                                                            .StaticPoolVertices = Lim::ShapeRenderer::MAX_VERTICES,
+                                                            .DynamicMeshes = 1,
+                                                            .DynamicVertices = Lim::Shell::MAX_VERTEX_COUNT}));
     Onyx::Resources_CreateDefault();
     {
         Lim::Game game{mode};

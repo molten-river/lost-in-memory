@@ -1,9 +1,7 @@
 #include "shapes/shape_renderer.hpp"
-#include "shapes/mesh_builder.hpp"
 
 #include "onyx/resources.hpp"
-#include "tkit/utils/limits.hpp"
-#include "tkit/utils/logging.hpp"
+#include "tkit/container/fixed_array.hpp"
 
 namespace Lim
 {
@@ -11,64 +9,62 @@ using Onyx::D3;
 
 namespace
 {
-/// The smallest maxDrawIndexedIndexValue Vulkan guarantees; onyx draws a dynamic mesh with indices from 0.
-constexpr u32 GUARANTEED_DRAW_INDEX_LIMIT = (1U << 24) - 1;
-
-static_assert(ShapeRenderer::VERTEX_CAPACITY <= TKit::Limits<Onyx::Index>::Max(),
-              "Every vertex must be reachable through onyx's index type");
-static_assert(ShapeRenderer::VERTEX_CAPACITY <= u32(TKit::Limits<i32>::Max()),
-              "Onyx stores a dynamic mesh's vertex offset in a signed 32-bit draw field");
-static_assert(ShapeRenderer::VERTEX_CAPACITY - 1 <= GUARANTEED_DRAW_INDEX_LIMIT,
-              "The highest index must stay within what every Vulkan device draws");
-} // namespace
-
-ShapeRenderer::ShapeRenderer() : m_Mesh(Onyx::DynamicMesh_Register<D3>())
+/// Flat-shaded hull triangles in the hull's own frame; the mesh keeps the default of no back-face culling.
+[[nodiscard]] Onyx::StaticMeshData<D3> CreateHullMesh(const ConvexHull &hull)
 {
-    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
-    mesh.Flags &= ~Onyx::MeshFlag_BackCulled;
-    mesh.Vertices.Reserve(VERTEX_CAPACITY);
-    mesh.Indices.Reserve(VERTEX_CAPACITY);
-    Onyx::Resources_Sync(Onyx::SyncFlag_DynamicMeshes);
+    Onyx::StaticMeshData<D3> mesh{};
+    hull.ForEachTriangle([&mesh](const f32v3 &first, const f32v3 &second, const f32v3 &third, const f32v3 &normal) {
+        const TKit::FixedArray<f32v3, 3> corners{first, second, third};
+        const f32v4 tangent{TKit::Math::Normalize(second - first), 1.f};
+        for (const f32v3 &corner : corners)
+        {
+            mesh.Indices.Append(Onyx::Index(mesh.Vertices.GetSize()));
+            mesh.Vertices.Append(Onyx::StaticVertex<D3>{
+                .Position = corner, .TexCoord = f32v2{0.f}, .Normal = normal, .Tangent = tangent});
+        }
+    });
+    return mesh;
 }
+} // namespace
 
 ShapeRenderer::~ShapeRenderer()
 {
-    Onyx::DynamicMesh_Destroy<D3>(m_Mesh);
+    if (!m_Pool)
+        return;
+    Onyx::ResourcePool_Release<D3>(*m_Pool);
+    Onyx::Resources_Sync(Onyx::SyncFlag_StaticMeshes);
 }
 
-bool ShapeRenderer::Rewrite(const TKit::Span<const ShapeInstance> instances)
+/// The released pool lives until the sync below, which waits for the frames in flight before destroying it.
+void ShapeRenderer::Load(const TKit::Span<const Shape *const> shapes)
 {
-    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
-    mesh.Vertices.Resize(VERTEX_CAPACITY);
+    if (m_Pool)
+        Onyx::ResourcePool_Release<D3>(*m_Pool);
+    const Onyx::ResourcePool pool = Onyx::ResourcePool_Create<D3>(Onyx::Resource_StaticMesh);
+    m_Pool = pool;
 
-    MeshBuilder builder{mesh.Vertices};
-    bool fits = true;
-    for (const ShapeInstance &instance : instances)
-        fits = instance.Shape->Emit(builder, instance.Transform, instance.PackedColor) && fits;
-
-    m_VertexCount = builder.GetVertexCount();
-    mesh.Vertices.Resize(m_VertexCount);
-    mesh.Indices.Resize(m_VertexCount);
-    for (u32 vertex = 0; vertex < m_VertexCount; ++vertex)
-        mesh.Indices[vertex] = vertex;
-
-    if (!fits && !m_HasOverflowed)
+    m_Shapes.Clear();
+    m_Meshes.Clear();
+    for (const Shape *shape : shapes)
     {
-        m_HasOverflowed = true;
-        TKIT_LOG_ERROR("[LIM][SHAPES] The shape mesh is full at {} vertices, so some shapes are not drawn",
-                       VERTEX_CAPACITY);
+        m_Shapes.Append(LoadedShape{.Source = shape, .FirstMesh = u32(m_Meshes.GetSize())});
+        for (u32 piece = 0; piece < shape->GetPieceCount(); ++piece)
+            m_Meshes.Append(Onyx::ResourcePool_RegisterMesh<D3>(pool, CreateHullMesh(shape->GetPieceHull(piece))));
     }
-    return fits;
+    Onyx::Resources_Sync(Onyx::SyncFlag_StaticMeshes);
 }
 
-void ShapeRenderer::Draw(Onyx::RenderContext<D3> &context) const
+void ShapeRenderer::Draw(Onyx::RenderContext<D3> &context, const TKit::Span<const ShapeInstance> instances) const
 {
-    if (m_VertexCount > 0)
-        context.DynamicMesh(m_Mesh);
-}
-
-u32 ShapeRenderer::GetVertexCount() const
-{
-    return m_VertexCount;
+    context.Push();
+    for (const ShapeInstance &instance : instances)
+    {
+        const LoadedShape &loaded = m_Shapes[instance.Slot];
+        context.FillColor(instance.Tint);
+        for (u32 piece = 0; piece < loaded.Source->GetPieceCount(); ++piece)
+            context.StaticMesh(m_Meshes[loaded.FirstMesh + piece],
+                               instance.Transform * loaded.Source->GetPiecePose(piece));
+    }
+    context.Pop();
 }
 } // namespace Lim

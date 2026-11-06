@@ -25,7 +25,9 @@ class WalkMass final : public Shape
 
     /// Simulates forward from the current step, or restores the newest snapshot at or before seconds and replays.
     void Evolve(f32 seconds) override;
-    [[nodiscard]] bool Emit(MeshBuilder &builder, const f32m4 &transform, u32 packedColor) const override;
+    [[nodiscard]] u32 GetPieceCount() const override;
+    [[nodiscard]] const ConvexHull &GetPieceHull(u32 piece) const override;
+    [[nodiscard]] const f32m4 &GetPiecePose(u32 piece) const override;
     [[nodiscard]] f32 Distance(const f32v3 &local) const override;
     [[nodiscard]] f32v3 Gradient(const f32v3 &local) const override;
     [[nodiscard]] f32 GetBoundingRadius() const override;
@@ -110,7 +112,6 @@ class WalkMass final : public Shape
     TKit::StaticArray<SampleSource, MAX_SAMPLE_POINTS> m_SampleSources{};
     TKit::StaticArray<f32v3, MAX_SAMPLE_POINTS> m_Samples{};
     u32 m_Step = 0;
-    u32 m_VertexCount = 0;
     f32 m_BoundingRadius = 0.f;
     f32 m_Volume = 0.f;
 };

@@ -155,11 +155,16 @@ f32 Body::GetBoundingRadius() const
     return m_Shape->GetBoundingRadius();
 }
 
-ShapeInstance Body::GetInstance(const u32 packedColor) const
+const Shape &Body::GetShape() const
 {
-    return ShapeInstance{.Shape = m_Shape.Get(),
+    return *m_Shape;
+}
+
+ShapeInstance Body::GetInstance(const u32 slot, const Onyx::Color &tint) const
+{
+    return ShapeInstance{.Slot = slot,
                          .Transform = Onyx::Transform<D3>::ComputeTransform(m_Position, f32v3{1.f}, m_Orientation),
-                         .PackedColor = packedColor};
+                         .Tint = tint};
 }
 
 void Body::GatherPenetrations(const Body &target, Contact &contact) const

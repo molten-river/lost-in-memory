@@ -177,8 +177,8 @@ void Viewer::Run()
         camera.ApplyTo(m_Camera);
 
         TKit::Clock stage{};
-        m_Gallery.Rewrite(m_Renderer, m_Clock.GetSeconds(), m_Params.Look.Colors, m_Params.Gallery);
-        const TKit::Timespan rewrite = stage.Restart();
+        m_Gallery.Evolve(m_Clock.GetSeconds(), m_Params.Gallery);
+        const TKit::Timespan evolve = stage.Restart();
 
         m_Context->Flush();
         DrawScene();
@@ -191,7 +191,7 @@ void Viewer::Run()
         Onyx::Render();
         m_Timings.Record(FrameTimings::Sample{.Frame = m_FrameClock.Restart(),
                                               .Scene = Onyx::GetDeltaTime(m_Window),
-                                              .Rewrite = rewrite,
+                                              .Evolve = evolve,
                                               .Panel = panel,
                                               .Render = stage.Restart()});
     }
@@ -217,7 +217,7 @@ CameraFrame Viewer::MakeCameraFrame(const f32 deltaTime) const
                        .Params = m_Params.Camera,
                        .Focus = m_Gallery.GetFocus(m_Params.Gallery),
                        .DeltaTime = deltaTime,
-                       .AcceptsInput = m_CameraActive && !m_AwaitingClickRelease};
+                       .AcceptsInput = m_CameraActive && !m_AwaitingClickRelease && !m_PointerEntered};
 }
 
 /// Locks the scene cursor exactly while the camera takes input; a free cursor can reach the tool window.
@@ -227,11 +227,13 @@ void Viewer::SetCameraActive(const bool active)
     Graph::Window_SetCursorMode(m_Window->GetHandle(), active ? Graph::CursorMode_Disabled : Graph::CursorMode_Normal);
 }
 
-/// Losing focus or changing size releases the lock; a left click in the scene takes it again.
+/// Losing focus or resizing releases the lock and a click retakes it; the pointer entering moves the locked cursor.
 void Viewer::HandleSceneEvents()
 {
+    m_PointerEntered = false;
     for (const Onyx::Event &event : m_Window->GetNewEvents())
     {
+        m_PointerEntered = m_PointerEntered || event.Type == Onyx::Event_MouseEntered;
         const bool lost = event.Type == Onyx::Event_WindowUnfocused || event.Type == Onyx::Event_WindowResized;
         const bool clicked = event.Type == Onyx::Event_MousePressed && event.Mouse.Button == Onyx::Mouse_Button1;
         if (lost && m_CameraActive)
@@ -378,7 +380,7 @@ void Viewer::DrawScene()
                                                                      .Extent = f32v2{LIGHT_EXTENT},
                                                                      .Tint = look.Colors.Light,
                                                                      .Intensity = look.LightIntensity});
-    m_Renderer.Draw(*m_Context);
+    m_Gallery.Draw(*m_Context, look.Colors, m_Params.Gallery);
 }
 
 /// Edits the params in place every frame; a pressed button becomes a rebake run at the top of the next frame.
