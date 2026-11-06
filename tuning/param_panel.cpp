@@ -115,7 +115,7 @@ bool ParamPanel::Begin(const UiTheme &theme, const f32 textSize, const f32 opaci
 
     Onyx::Overlay &ui = *m_Overlay;
     const Onyx::NativeWindow &native = *ui.GetMainNativeWindow();
-    const f32v2 screen{native.Window->GetScreenDimensions()};
+    const f32v2 screen{native.Window->GetSize()};
     if (screen[1] <= 0.f)
         return false;
 

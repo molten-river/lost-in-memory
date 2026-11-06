@@ -20,4 +20,4 @@ tkit_register_for_reflection(lim-shapes SOURCES
     viewer/viewer_params.hpp)
 tkit_configure_compile_link_options(lim-shapes NO_EXCEPTIONS NO_RTTI)
 target_compile_definitions(lim-shapes PRIVATE LIM_SHAPES_DEFAULTS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/defaults.yaml")
-target_link_libraries(lim-shapes PRIVATE memory look tuning shapes onyx glfw)
+target_link_libraries(lim-shapes PRIVATE memory look tuning shapes onyx)

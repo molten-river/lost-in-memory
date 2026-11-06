@@ -22,35 +22,35 @@ static_assert(ShapeRenderer::VERTEX_CAPACITY - 1 <= GUARANTEED_DRAW_INDEX_LIMIT,
               "The highest index must stay within what every Vulkan device draws");
 } // namespace
 
-ShapeRenderer::ShapeRenderer() : m_Mesh(Onyx::Resources::RegisterDynamicMesh<D3>().Handle)
+ShapeRenderer::ShapeRenderer() : m_Mesh(Onyx::DynamicMesh_Register<D3>())
 {
-    Onyx::DynamicMeshData<D3> *const mesh = Onyx::Resources::GetDynamicMeshData<D3>(m_Mesh);
-    mesh->Flags &= ~Onyx::MeshDataFlag_BackCulled;
-    mesh->Vertices.Reserve(VERTEX_CAPACITY);
-    mesh->Indices.Reserve(VERTEX_CAPACITY);
-    Onyx::Resources::Sync(Onyx::SyncFlag_DynamicMeshes);
+    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
+    mesh.Flags &= ~Onyx::MeshFlag_BackCulled;
+    mesh.Vertices.Reserve(VERTEX_CAPACITY);
+    mesh.Indices.Reserve(VERTEX_CAPACITY);
+    Onyx::Resources_Sync(Onyx::SyncFlag_DynamicMeshes);
 }
 
 ShapeRenderer::~ShapeRenderer()
 {
-    Onyx::Resources::DestroyDynamicMesh<D3>(m_Mesh);
+    Onyx::DynamicMesh_Destroy<D3>(m_Mesh);
 }
 
 bool ShapeRenderer::Rewrite(const TKit::Span<const ShapeInstance> instances)
 {
-    Onyx::DynamicMeshData<D3> *const mesh = Onyx::Resources::GetDynamicMeshData<D3>(m_Mesh);
-    mesh->Vertices.Resize(VERTEX_CAPACITY);
+    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
+    mesh.Vertices.Resize(VERTEX_CAPACITY);
 
-    MeshBuilder builder{mesh->Vertices};
+    MeshBuilder builder{mesh.Vertices};
     bool fits = true;
     for (const ShapeInstance &instance : instances)
         fits = instance.Shape->Emit(builder, instance.Transform, instance.PackedColor) && fits;
 
     m_VertexCount = builder.GetVertexCount();
-    mesh->Vertices.Resize(m_VertexCount);
-    mesh->Indices.Resize(m_VertexCount);
+    mesh.Vertices.Resize(m_VertexCount);
+    mesh.Indices.Resize(m_VertexCount);
     for (u32 vertex = 0; vertex < m_VertexCount; ++vertex)
-        mesh->Indices[vertex] = vertex;
+        mesh.Indices[vertex] = vertex;
 
     if (!fits && !m_HasOverflowed)
     {

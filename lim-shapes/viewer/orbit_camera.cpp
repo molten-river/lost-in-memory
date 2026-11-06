@@ -52,7 +52,7 @@ void OrbitCamera::Update(const CameraFrame &frame)
 
     if (window.IsMousePressed(Onyx::Mouse_ButtonLeft))
     {
-        const f32v2 cursor = window.GetAbsoluteMousePosition();
+        const f32v2 cursor = window.GetMousePosition();
         if (m_LastCursor)
         {
             const f32v2 drag = (cursor - *m_LastCursor) * params.MouseRadiansPerPixel;

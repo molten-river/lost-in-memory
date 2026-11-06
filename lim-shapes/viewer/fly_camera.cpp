@@ -23,7 +23,7 @@ void FlyCamera::Update(const CameraFrame &frame)
     f32 roll = 0.f;
     if (frame.AcceptsInput)
     {
-        const f32v2 cursor = window.GetAbsoluteMousePosition();
+        const f32v2 cursor = window.GetMousePosition();
         if (m_LastCursor)
             look = (cursor - *m_LastCursor) * params.MouseRadiansPerPixel;
         m_LastCursor = cursor;

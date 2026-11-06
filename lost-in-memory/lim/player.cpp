@@ -1,10 +1,9 @@
 #include "lim/player.hpp"
 
+#include "graph/platform.hpp"
+
 #include "tkit/math/math.hpp"
 #include "tkit/math/quaternion.hpp"
-
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
 
 namespace Lim
 {
@@ -35,10 +34,7 @@ void Player::Reset()
 
 void Player::SetCursorLocked(const bool locked)
 {
-    GLFWwindow *const handle = m_Window->GetHandle();
-    glfwSetInputMode(handle, GLFW_CURSOR, locked ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    if (glfwRawMouseMotionSupported())
-        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, locked ? GLFW_TRUE : GLFW_FALSE);
+    Graph::Window_SetCursorMode(m_Window->GetHandle(), locked ? Graph::CursorMode_Disabled : Graph::CursorMode_Normal);
     m_CursorLocked = locked;
     m_LastCursor = TKit::Optional<f32v2>::None();
 }
@@ -48,7 +44,7 @@ void Player::Update(const f32 deltaTime)
     f32v2 look{0.f};
     if (m_CursorLocked)
     {
-        const f32v2 cursor = m_Window->GetAbsoluteMousePosition();
+        const f32v2 cursor = m_Window->GetMousePosition();
         if (m_LastCursor)
             look = (cursor - *m_LastCursor) * m_Params.MouseRadiansPerPixel;
         m_LastCursor = cursor;

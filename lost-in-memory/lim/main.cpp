@@ -41,7 +41,7 @@ int main(int argc, char **argv)
     const Lim::PlayMode mode = ParseMode(argc, argv);
 
     Onyx::Initialize();
-    Onyx::Resources::CreateDefaultResources();
+    Onyx::Resources_CreateDefault();
     {
         Lim::Game game{mode};
         game.Run();

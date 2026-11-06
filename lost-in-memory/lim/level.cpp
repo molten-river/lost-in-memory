@@ -61,9 +61,9 @@ struct RecordDrift
 }
 } // namespace
 
-Level::Level() : m_Material(Onyx::Resources::RegisterMaterial<D3>())
+Level::Level() : m_Material(Onyx::Material_Register<D3>())
 {
-    Onyx::Resources::Sync(Onyx::SyncFlag_Materials);
+    Onyx::Resources_Sync(Onyx::SyncFlag_Materials);
 }
 
 void Level::Generate(const Region &region, const LevelParams &params, const ShapeKitParams &kit, const PlayMode mode)

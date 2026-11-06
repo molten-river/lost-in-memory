@@ -14,40 +14,13 @@ set(CMAKE_BUILD_TYPE
 
 include(FetchContent)
 
-set(ONYX_PATCH_STEPS
-    PATCH_COMMAND
-    ${CMAKE_COMMAND}
-    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
-    -P
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch-onyx-dynamic-cull.cmake)
-
-if(WIN32)
-  list(
-    APPEND
-    ONYX_PATCH_STEPS
-    COMMAND
-    ${CMAKE_COMMAND}
-    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
-    -P
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch-onyx-overlay.cmake
-    COMMAND
-    ${CMAKE_COMMAND}
-    -DONYX_SOURCE_DIR=${FETCHCONTENT_BASE_DIR}/onyx-src
-    -P
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/patch-onyx-surface-name.cmake)
-endif()
-
 FetchContent_Declare(
   onyx
   GIT_REPOSITORY https://github.com/ismawno/onyx.git
-  GIT_TAG v0.11.x
+  GIT_TAG v0.12.x
   GIT_SHALLOW TRUE
-  GIT_PROGRESS TRUE ${ONYX_PATCH_STEPS})
+  GIT_PROGRESS TRUE)
 FetchContent_MakeAvailable(onyx)
-
-if(NOT TARGET glfw)
-  find_package(glfw3 REQUIRED)
-endif()
 
 if(WIN32)
   target_compile_definitions(onyx PRIVATE _CRT_SECURE_NO_WARNINGS)

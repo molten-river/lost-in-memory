@@ -148,15 +148,15 @@ constexpr TKit::FixedArray<u32v3, 20> ICOSAHEDRON_FACES{
 }
 } // namespace
 
-Shell::Shell() : m_Mesh(Onyx::Resources::RegisterDynamicMesh<D3>().Handle)
+Shell::Shell() : m_Mesh(Onyx::DynamicMesh_Register<D3>())
 {
-    Onyx::Resources::GetDynamicMeshData<D3>(m_Mesh)->Flags &= ~Onyx::MeshDataFlag_BackCulled;
-    Onyx::Resources::Sync(Onyx::SyncFlag_DynamicMeshes);
+    Onyx::DynamicMesh_GetData<D3>(m_Mesh).Flags &= ~Onyx::MeshFlag_BackCulled;
+    Onyx::Resources_Sync(Onyx::SyncFlag_DynamicMeshes);
 }
 
 Shell::~Shell()
 {
-    Onyx::Resources::DestroyDynamicMesh<D3>(m_Mesh);
+    Onyx::DynamicMesh_Destroy<D3>(m_Mesh);
 }
 
 void Shell::Build(const ShellParams &shell, const ShellMotionParams &motion, const Palette &colors,
@@ -200,14 +200,14 @@ void Shell::Build(const ShellParams &shell, const ShellMotionParams &motion, con
     m_Positions.Resize(vertexCount);
     m_Heights.Resize(vertexCount);
 
-    Onyx::DynamicMeshData<D3> *mesh = Onyx::Resources::GetDynamicMeshData<D3>(m_Mesh);
+    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
     const u32 cornerCount = 3 * triangleCount;
-    mesh->Vertices.Resize(cornerCount);
-    mesh->Indices.Resize(cornerCount);
+    mesh.Vertices.Resize(cornerCount);
+    mesh.Indices.Resize(cornerCount);
     for (u32 corner = 0; corner < cornerCount; ++corner)
     {
-        mesh->Vertices[corner].TexCoord = f32v2{0.f};
-        mesh->Indices[corner] = corner;
+        mesh.Vertices[corner].TexCoord = f32v2{0.f};
+        mesh.Indices[corner] = corner;
     }
 
     Update(0.f);
@@ -326,7 +326,7 @@ void Shell::Update(const f32 time)
     else
         DisplaceByWaves(time);
 
-    Onyx::DynamicMeshData<D3> *mesh = Onyx::Resources::GetDynamicMeshData<D3>(m_Mesh);
+    Onyx::DynamicMeshData<D3> &mesh = Onyx::DynamicMesh_GetData<D3>(m_Mesh);
     for (u32 triangle = 0; triangle < m_Triangles.GetSize(); ++triangle)
     {
         const u32v3 &corners = m_Triangles[triangle];
@@ -347,7 +347,7 @@ void Shell::Update(const f32 time)
 
         for (u32 corner = 0; corner < 3; ++corner)
         {
-            Onyx::DynamicVertex<D3> &vertex = mesh->Vertices[3 * triangle + corner];
+            Onyx::DynamicVertex<D3> &vertex = mesh.Vertices[3 * triangle + corner];
             vertex.Position = m_Positions[corners[corner]];
             vertex.Normal = normal;
             vertex.Tangent = tangent;

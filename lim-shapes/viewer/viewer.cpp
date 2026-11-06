@@ -18,8 +18,7 @@
 #include "tkit/utils/debug.hpp"
 #include "tkit/utils/logging.hpp"
 
-#define GLFW_INCLUDE_NONE
-#include <GLFW/glfw3.h>
+#include "graph/platform.hpp"
 
 namespace Lim
 {
@@ -34,9 +33,7 @@ constexpr i32 TOOL_WINDOW_EDGE = 16;
 constexpr i32 TOOL_WINDOW_TOP = 48;
 constexpr i32 TOOL_WINDOW_VERTICAL_ROOM = 3 * TOOL_WINDOW_TOP;
 constexpr i32 TOOL_WINDOW_MIN_HEIGHT = 480;
-constexpr Onyx::WindowFlags TOOL_WINDOW_FLAGS = Onyx::WindowFlag_Resizable | Onyx::WindowFlag_Visible |
-                                                Onyx::WindowFlag_Decorated | Onyx::WindowFlag_Floating |
-                                                Onyx::WindowFlag_InstallCallbacks;
+constexpr Onyx::WindowFlags TOOL_WINDOW_FLAGS = Onyx::WindowFlag_Floating | Onyx::WindowFlag_NotFocused;
 constexpr Onyx::OpenWindowFlags OPEN_FLAGS = Onyx::OpenWindowFlag_DoNotDestroyOnShouldClose;
 
 constexpr f32 CAMERA_FAR = 2000.f;
@@ -69,7 +66,7 @@ constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"SAME BYTES", "NEW
 template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKit::StringView name)
 {
     bool found = false;
-    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
+    ForEachMemberFieldConstexpr<Params>([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if constexpr (TKit::Reflect<Type>::Implemented)
             found = found || TKit::StringView{field.Name} == name;
@@ -115,7 +112,7 @@ static_assert(AreTabsKnown<ViewerParams>(VIEWER_TABS) && AreTabsKnown<ShapeKitPa
 [[nodiscard]] Onyx::WindowSpecs MakeToolWindowSpecs()
 {
     Onyx::WindowSpecs specs{.Title = TOOL_WINDOW_TITLE,
-                            .Dimensions = TOOL_WINDOW_SIZE,
+                            .ScreenSize = TOOL_WINDOW_SIZE,
                             .PresentMode = Onyx::PresentMode_Immediate,
                             .Flags = TOOL_WINDOW_FLAGS};
     const TKit::Optional<u32v2> screen = GetMainScreenSize();
@@ -124,7 +121,7 @@ static_assert(AreTabsKnown<ViewerParams>(VIEWER_TABS) && AreTabsKnown<ShapeKitPa
 
     const i32 height = TKit::Math::Clamp(i32((*screen)[1]) - TOOL_WINDOW_VERTICAL_ROOM, TOOL_WINDOW_MIN_HEIGHT,
                                          i32(TOOL_WINDOW_SIZE[1]));
-    specs.Dimensions = u32v2{TOOL_WINDOW_SIZE[0], u32(height)};
+    specs.ScreenSize = u32v2{TOOL_WINDOW_SIZE[0], u32(height)};
     specs.Position =
         i32v2{TKit::Math::Max(i32((*screen)[0]) - i32(TOOL_WINDOW_SIZE[0]) - TOOL_WINDOW_EDGE, 0), TOOL_WINDOW_TOP};
     return specs;
@@ -134,14 +131,13 @@ static_assert(AreTabsKnown<ViewerParams>(VIEWER_TABS) && AreTabsKnown<ShapeKitPa
 Viewer::Viewer()
     : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE), .Flags = OPEN_FLAGS})),
       m_ToolWindow(Onyx::OpenWindow({.Window = MakeToolWindowSpecs(), .Flags = OPEN_FLAGS})),
-      m_View(m_Window->CreateRenderView<D3>(&m_Camera, Onyx::RenderViewFlag_NormalizedCoordinates)),
-      m_Context(Onyx::CreateRenderContext<D3>()),
-      m_Material(Onyx::Resources::RegisterMaterial<D3>(Onyx::MaterialData<D3>{.RoughnessFactor = MATERIAL_ROUGHNESS})),
+      m_View(m_Window->CreateRenderView<D3>(&m_Camera)), m_Context(Onyx::CreateRenderContext<D3>()),
+      m_Material(Onyx::Material_Register<D3>(Onyx::MaterialData<D3>{.RoughnessFactor = MATERIAL_ROUGHNESS})),
       m_Params(LoadViewerParams()), m_Kit(LoadShapeKitParams()), m_Panel(*m_ToolWindow, m_Fonts)
 {
     m_Camera.PerspParameters.Far = CAMERA_FAR;
     m_Context->AddTarget(m_View);
-    Onyx::Resources::Sync(Onyx::SyncFlag_Materials);
+    Onyx::Resources_Sync(Onyx::SyncFlag_Materials);
 }
 
 void Viewer::Run()
@@ -227,10 +223,7 @@ CameraFrame Viewer::MakeCameraFrame(const f32 deltaTime) const
 void Viewer::SetCameraActive(const bool active)
 {
     m_CameraActive = active;
-    GLFWwindow *const handle = m_Window->GetHandle();
-    glfwSetInputMode(handle, GLFW_CURSOR, active ? GLFW_CURSOR_DISABLED : GLFW_CURSOR_NORMAL);
-    if (glfwRawMouseMotionSupported())
-        glfwSetInputMode(handle, GLFW_RAW_MOUSE_MOTION, active ? GLFW_TRUE : GLFW_FALSE);
+    Graph::Window_SetCursorMode(m_Window->GetHandle(), active ? Graph::CursorMode_Disabled : Graph::CursorMode_Normal);
 }
 
 /// Losing focus or changing size releases the lock; a left click in the scene takes it again.
@@ -264,7 +257,7 @@ void Viewer::HandleKeys()
     static constexpr TKit::FixedArray<KeyBinding, KEY_BINDING_COUNT> BINDINGS{{
         {Onyx::Key_Tab,
          [](Viewer &viewer) {
-             const bool focused = (viewer.m_Window->GetFlags() & Onyx::WindowFlag_Focused) != 0;
+             const bool focused = (viewer.m_Window->GetFlags() & Onyx::WindowFlag_NotFocused) == 0;
              viewer.SetCameraActive(!viewer.m_CameraActive && focused);
          }},
         {Onyx::Key_G,

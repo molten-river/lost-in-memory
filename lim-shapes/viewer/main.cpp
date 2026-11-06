@@ -6,7 +6,7 @@
 int main()
 {
     Onyx::Initialize();
-    Onyx::Resources::CreateDefaultResources();
+    Onyx::Resources_CreateDefault();
     {
         Lim::Viewer viewer{};
         viewer.Run();

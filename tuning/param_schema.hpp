@@ -3,11 +3,13 @@
 #include "alias/alias.hpp"
 
 #include "onyx/color.hpp"
+#include "tkit/container/container.hpp"
 #include "tkit/container/fixed_array.hpp"
 #include "tkit/container/span.hpp"
 #include "tkit/reflection/reflect.hpp"
 
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 namespace Lim
@@ -144,5 +146,18 @@ template <typename Params>
     while (index < ParamSchema<Params>::ENUMS.GetSize() && ParamSchema<Params>::ENUMS[index].Field != field)
         ++index;
     return ParamSchema<Params>::ENUMS[index];
+}
+
+/// The toolkit's free tuple Get is not constexpr, so constant evaluation walks the fields through the member Get.
+template <typename Params, typename Fun> constexpr void ForEachMemberFieldConstexpr(Fun &&fun)
+{
+    constexpr auto fields = TKit::Reflect<Params>::GetMemberFields();
+    if constexpr (TKit::Iterable<std::remove_cvref_t<decltype(fields)>>)
+        for (const auto &field : fields)
+            fun(field);
+    else
+        [&]<usize... Is>(const std::integer_sequence<usize, Is...>) {
+            (fun(fields.template Get<Is>()), ...);
+        }(std::make_integer_sequence<usize, std::tuple_size_v<std::remove_cvref_t<decltype(fields)>>>{});
 }
 } // namespace Lim
