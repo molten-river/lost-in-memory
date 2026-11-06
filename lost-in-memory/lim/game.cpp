@@ -2,6 +2,7 @@
 
 #include "lim/debug_tools.hpp"
 #include "lim/params_reflection.hpp"
+#include "look/render_view_specs.hpp"
 #include "look/window_specs.hpp"
 #include "shapes/shape_kit_file.hpp"
 #include "tuning/schema_rules.hpp"
@@ -33,7 +34,7 @@ constexpr u32 CAPTURE_ATTEMPTS = 3;
 
 Game::Game(const PlayMode mode)
     : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE)})),
-      m_View(m_Window->CreateRenderView<D3>(&m_Camera)), m_Context(Onyx::CreateRenderContext<D3>()),
+      m_View(m_Window->CreateRenderView<D3>(&m_Camera, RENDER_VIEW_SPECS)), m_Context(Onyx::CreateRenderContext<D3>()),
       m_Params(Sanitize(LoadLevelParams())), m_Kit(LoadShapeKitParams()), m_Sandbox(*m_Window, m_Fonts),
       m_Player(*m_Window), m_Mode(mode)
 {

@@ -3,6 +3,7 @@
 #include "viewer/params_reflection.hpp"
 #include "viewer/viewer_visibility.hpp"
 
+#include "look/render_view_specs.hpp"
 #include "look/window_specs.hpp"
 #include "memory/region.hpp"
 #include "shapes/shape_kit_file.hpp"
@@ -131,7 +132,7 @@ static_assert(AreTabsKnown<ViewerParams>(VIEWER_TABS) && AreTabsKnown<ShapeKitPa
 Viewer::Viewer()
     : m_Window(Onyx::OpenWindow({.Window = MakeBorderlessWindowSpecs(WINDOW_TITLE), .Flags = OPEN_FLAGS})),
       m_ToolWindow(Onyx::OpenWindow({.Window = MakeToolWindowSpecs(), .Flags = OPEN_FLAGS})),
-      m_View(m_Window->CreateRenderView<D3>(&m_Camera)), m_Context(Onyx::CreateRenderContext<D3>()),
+      m_View(m_Window->CreateRenderView<D3>(&m_Camera, RENDER_VIEW_SPECS)), m_Context(Onyx::CreateRenderContext<D3>()),
       m_Material(Onyx::Material_Register<D3>(Onyx::MaterialData<D3>{.RoughnessFactor = MATERIAL_ROUGHNESS})),
       m_Params(LoadViewerParams()), m_Kit(LoadShapeKitParams()), m_Panel(*m_ToolWindow, m_Fonts)
 {
