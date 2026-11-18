@@ -44,7 +44,7 @@ int main(int argc, char **argv)
     const Lim::PlayMode mode = ParseMode(argc, argv);
 
     Onyx::Initialize(Lim::MakeEngineSpecs(Lim::EngineBudget{.StaticMeshes = Lim::ShapeRenderer::MAX_MESHES,
-                                                            .StaticPoolVertices = Lim::ShapeRenderer::MAX_VERTICES,
+                                                            .StaticPoolVertices = Lim::ShapeRenderer::MAX_POOL_VERTICES,
                                                             .DynamicMeshes = 1,
                                                             .DynamicVertices = Lim::Shell::MAX_VERTEX_COUNT}));
     Onyx::Resources_CreateDefault();

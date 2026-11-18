@@ -10,7 +10,7 @@ namespace
 constexpr u32 DEFAULT_MESH_COUNT = 10;
 /// Every mesh draws in the shaded pass alone: no light casts shadows and nothing is outlined.
 constexpr u32 PASSES_PER_MESH = 1;
-/// A reload registers the new pool's bounds before the sync that destroys the released pool's.
+/// A reload registers the new pools' bounds before the sync that destroys the released pools'.
 constexpr u32 LIVE_POOLS_PER_RELOAD = 2;
 /// The default pool capacity, which Resources_CreateDefault's meshes rely on.
 constexpr Onyx::SpecificSpecs<Onyx::D3> ONYX_DEFAULTS{};

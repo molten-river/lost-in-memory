@@ -7,8 +7,8 @@
 
 int main()
 {
-    Onyx::Initialize(Lim::MakeEngineSpecs(Lim::EngineBudget{.StaticMeshes = Lim::ShapeRenderer::MAX_MESHES,
-                                                            .StaticPoolVertices = Lim::ShapeRenderer::MAX_VERTICES}));
+    Onyx::Initialize(Lim::MakeEngineSpecs(Lim::EngineBudget{
+        .StaticMeshes = Lim::ShapeRenderer::MAX_MESHES, .StaticPoolVertices = Lim::ShapeRenderer::MAX_POOL_VERTICES}));
     Onyx::Resources_CreateDefault();
     {
         Lim::Viewer viewer{};
