@@ -56,13 +56,13 @@ void Game::Run()
     {
         if (m_PendingAction != SandboxScreen::Action::None)
             Rebuild(std::exchange(m_PendingAction, SandboxScreen::Action::None));
-        if (m_Window->IsKeyPressed(Onyx::Key_Escape))
+        if (m_Window->IsKeyPressed(Graph::Key_Escape))
             Onyx::Quit(Onyx::QuitFlag_DestroyWindows);
 
         bool enterTriggered = false;
         if constexpr (DEBUG_TOOLS)
         {
-            const bool enterPressed = m_Window->IsKeyPressed(Onyx::Key_Enter);
+            const bool enterPressed = m_Window->IsKeyPressed(Graph::Key_Enter);
             enterTriggered = enterPressed && !m_EnterWasPressed;
             m_EnterWasPressed = enterPressed;
         }

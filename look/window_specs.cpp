@@ -1,6 +1,7 @@
 #include "look/window_specs.hpp"
 
 #include "graph/platform.hpp"
+#include "onyx/core.hpp"
 
 namespace Lim
 {

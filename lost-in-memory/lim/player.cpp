@@ -9,7 +9,7 @@ namespace Lim
 {
 namespace
 {
-[[nodiscard]] f32 KeyAxis(const Onyx::Window &window, const Onyx::Key positive, const Onyx::Key negative)
+[[nodiscard]] f32 KeyAxis(const Onyx::Window &window, const Graph::Key positive, const Graph::Key negative)
 {
     return f32(window.IsKeyPressed(positive)) - f32(window.IsKeyPressed(negative));
 }
@@ -49,12 +49,12 @@ void Player::Update(const f32 deltaTime)
             look = (cursor - *m_LastCursor) * m_Params.MouseRadiansPerPixel;
         m_LastCursor = cursor;
     }
-    const f32 roll = KeyAxis(*m_Window, Onyx::Key_Q, Onyx::Key_E) * m_Params.RollSpeed * deltaTime;
+    const f32 roll = KeyAxis(*m_Window, Graph::Key_Q, Graph::Key_E) * m_Params.RollSpeed * deltaTime;
     m_Orientation = TKit::Math::Normalize(m_Orientation * f32q{f32v3{-look[1], -look[0], roll}});
 
-    const f32v3 input{KeyAxis(*m_Window, Onyx::Key_D, Onyx::Key_A),
-                      KeyAxis(*m_Window, Onyx::Key_Space, Onyx::Key_LeftControl),
-                      KeyAxis(*m_Window, Onyx::Key_S, Onyx::Key_W)};
+    const f32v3 input{KeyAxis(*m_Window, Graph::Key_D, Graph::Key_A),
+                      KeyAxis(*m_Window, Graph::Key_Space, Graph::Key_LeftControl),
+                      KeyAxis(*m_Window, Graph::Key_S, Graph::Key_W)};
     if (TKit::Math::NormSquared(input) > 0.f)
         m_Velocity += m_Orientation * TKit::Math::Normalize(input) * (m_Params.Thrust * deltaTime);
 

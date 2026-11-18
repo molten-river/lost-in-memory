@@ -165,7 +165,7 @@ void Viewer::Run()
             m_PendingRebake = TKit::Optional<Rebake>::None();
         }
         SettleShapes();
-        if (IsKeyDown(Onyx::Key_Escape) || m_Window->ShouldClose() || m_ToolWindow->ShouldClose())
+        if (IsKeyDown(Graph::Key_Escape) || m_Window->ShouldClose() || m_ToolWindow->ShouldClose())
             Onyx::Quit(Onyx::QuitFlag_DestroyWindows);
         HandleSceneEvents();
         HandleKeys();
@@ -235,7 +235,7 @@ void Viewer::HandleSceneEvents()
     {
         m_PointerEntered = m_PointerEntered || event.Type == Onyx::Event_MouseEntered;
         const bool lost = event.Type == Onyx::Event_WindowUnfocused || event.Type == Onyx::Event_WindowResized;
-        const bool clicked = event.Type == Onyx::Event_MousePressed && event.Mouse.Button == Onyx::Mouse_Button1;
+        const bool clicked = event.Type == Onyx::Event_MousePressed && event.Mouse.Button == Graph::Mouse_Button1;
         if (lost && m_CameraActive)
             SetCameraActive(false);
         else if (clicked && !m_CameraActive)
@@ -244,12 +244,12 @@ void Viewer::HandleSceneEvents()
             m_AwaitingClickRelease = true;
         }
     }
-    if (!m_Window->IsMousePressed(Onyx::Mouse_ButtonLeft))
+    if (!m_Window->IsMousePressed(Graph::Mouse_ButtonLeft))
         m_AwaitingClickRelease = false;
 }
 
 /// GLFW reports a key only to the focused window, so a hotkey counts when either window holds it.
-bool Viewer::IsKeyDown(const Onyx::Key key) const
+bool Viewer::IsKeyDown(const Graph::Key key) const
 {
     return m_Window->IsKeyPressed(key) || m_ToolWindow->IsKeyPressed(key);
 }
@@ -258,30 +258,30 @@ bool Viewer::IsKeyDown(const Onyx::Key key) const
 void Viewer::HandleKeys()
 {
     static constexpr TKit::FixedArray<KeyBinding, KEY_BINDING_COUNT> BINDINGS{{
-        {Onyx::Key_Tab,
+        {Graph::Key_Tab,
          [](Viewer &viewer) {
              const bool focused = (viewer.m_Window->GetFlags() & Onyx::WindowFlag_NotFocused) == 0;
              viewer.SetCameraActive(!viewer.m_CameraActive && focused);
          }},
-        {Onyx::Key_G,
+        {Graph::Key_G,
          [](Viewer &viewer) {
              viewer.m_Gallery.ToggleMode();
              viewer.Home();
          }},
-        {Onyx::Key_Left, [](Viewer &viewer) { viewer.StepSelection(-1); }},
-        {Onyx::Key_Right, [](Viewer &viewer) { viewer.StepSelection(1); }},
-        {Onyx::Key_O,
+        {Graph::Key_Left, [](Viewer &viewer) { viewer.StepSelection(-1); }},
+        {Graph::Key_Right, [](Viewer &viewer) { viewer.StepSelection(1); }},
+        {Graph::Key_O,
          [](Viewer &viewer) {
              viewer.m_CameraKind = CameraRegistry::Kind((u32(viewer.m_CameraKind) + 1) % CameraRegistry::KIND_COUNT);
              viewer.EngageCamera();
          }},
-        {Onyx::Key_P, [](Viewer &viewer) { viewer.m_Clock.TogglePause(); }},
-        {Onyx::Key_LeftBracket, [](Viewer &viewer) { viewer.m_Clock.ScaleBy(1.f / SCALE_STEP); }},
-        {Onyx::Key_RightBracket, [](Viewer &viewer) { viewer.m_Clock.ScaleBy(SCALE_STEP); }},
-        {Onyx::Key_Comma, [](Viewer &viewer) { viewer.m_Clock.Scrub(-SCRUB_SECONDS); }},
-        {Onyx::Key_Period, [](Viewer &viewer) { viewer.m_Clock.Scrub(SCRUB_SECONDS); }},
-        {Onyx::Key_Backspace, [](Viewer &viewer) { viewer.m_Clock.Reset(); }},
-        {Onyx::Key_R, [](Viewer &viewer) { viewer.Rebuild(Rebake::NewRegion); }},
+        {Graph::Key_P, [](Viewer &viewer) { viewer.m_Clock.TogglePause(); }},
+        {Graph::Key_LeftBracket, [](Viewer &viewer) { viewer.m_Clock.ScaleBy(1.f / SCALE_STEP); }},
+        {Graph::Key_RightBracket, [](Viewer &viewer) { viewer.m_Clock.ScaleBy(SCALE_STEP); }},
+        {Graph::Key_Comma, [](Viewer &viewer) { viewer.m_Clock.Scrub(-SCRUB_SECONDS); }},
+        {Graph::Key_Period, [](Viewer &viewer) { viewer.m_Clock.Scrub(SCRUB_SECONDS); }},
+        {Graph::Key_Backspace, [](Viewer &viewer) { viewer.m_Clock.Reset(); }},
+        {Graph::Key_R, [](Viewer &viewer) { viewer.Rebuild(Rebake::NewRegion); }},
     }};
 
     for (u32 i = 0; i < KEY_BINDING_COUNT; ++i)
@@ -373,7 +373,7 @@ void Viewer::DrawScene()
     m_ToolWindow->ClearColor = look.Colors.UiBackground;
 
     m_Context->Material(m_Material);
-    m_Context->RenderFlags(Onyx::RenderModeFlag_Shaded);
+    m_Context->SetRenderState(Onyx::FillMode_Shaded);
     m_Context->SetAmbientLight(look.Colors.Ambient);
     m_Context->SetAmbientIntensity(look.AmbientIntensity);
     m_Context->DirectionalLight(Onyx::DirectionalLightParameters<D3>{.Direction = LIGHT_DIRECTION,

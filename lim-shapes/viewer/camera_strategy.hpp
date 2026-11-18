@@ -40,7 +40,7 @@ class CameraStrategy
     [[nodiscard]] virtual TKit::StringView GetName() const = 0;
 };
 
-[[nodiscard]] inline f32 KeyAxis(const Onyx::Window &window, const Onyx::Key positive, const Onyx::Key negative)
+[[nodiscard]] inline f32 KeyAxis(const Onyx::Window &window, const Graph::Key positive, const Graph::Key negative)
 {
     return f32(window.IsKeyPressed(positive)) - f32(window.IsKeyPressed(negative));
 }

@@ -150,7 +150,6 @@ constexpr TKit::FixedArray<u32v3, Shell::ICOSAHEDRON_FACE_COUNT> ICOSAHEDRON_FAC
 
 Shell::Shell() : m_Mesh(Onyx::DynamicMesh_Register<D3>())
 {
-    Onyx::DynamicMesh_GetData<D3>(m_Mesh).Flags &= ~Onyx::MeshFlag_BackCulled;
     Onyx::Resources_Sync(Onyx::SyncFlag_DynamicMeshes);
 }
 
@@ -234,9 +233,9 @@ void Shell::Subdivide()
     TKit::TierHashMap<u64, u32> midpoints{};
     const auto midpoint = [this, &midpoints](const u32 first, const u32 second) {
         const u64 edge = (u64(TKit::Math::Min(first, second)) << 32) | TKit::Math::Max(first, second);
-        bool existed = false;
-        const u32 index = midpoints.TryInsert(&existed, edge, m_RestDirections.GetSize());
-        if (!existed)
+        bool inserted = false;
+        const u32 index = midpoints.TryInsert(&inserted, edge, m_RestDirections.GetSize());
+        if (inserted)
         {
             const f32v3 direction = TKit::Math::Normalize(m_RestDirections[first] + m_RestDirections[second]);
             m_RestDirections.Append(direction);

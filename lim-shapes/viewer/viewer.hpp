@@ -45,7 +45,7 @@ class Viewer
 
     struct KeyBinding
     {
-        Onyx::Key Key;
+        Graph::Key Key;
         void (*Command)(Viewer &viewer);
     };
 
@@ -56,7 +56,7 @@ class Viewer
     [[nodiscard]] CameraFrame MakeCameraFrame(f32 deltaTime) const;
     void SetCameraActive(bool active);
     void HandleSceneEvents();
-    [[nodiscard]] bool IsKeyDown(Onyx::Key key) const;
+    [[nodiscard]] bool IsKeyDown(Graph::Key key) const;
     void HandleKeys();
     void StepSelection(i32 offset);
     void SettleShapes();

@@ -62,7 +62,7 @@
         "VULKIT_ENABLE_SWAP_CHAIN": "ON",
 
         "ONYX_BUILD_DEMOS": "OFF",
-        "ONYX_ENABLE_AUDIO": "ON",
+        "ONYX_ENABLE_AUDIO": "OFF",
         "ONYX_ENABLE_IMGUI": "OFF",
         "ONYX_ENABLE_IMPLOT": "OFF",
         "ONYX_ENABLE_NFD": "OFF",

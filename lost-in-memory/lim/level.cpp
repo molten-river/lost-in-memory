@@ -142,7 +142,7 @@ void Level::Draw(Onyx::RenderContext<D3> &context, const f32 brightness) const
     context.PushClear();
     context.NoClip();
     context.Material(m_Material);
-    context.RenderFlags(Onyx::RenderModeFlag_Shaded);
+    context.SetRenderState(Onyx::FillMode_Shaded);
     context.SetAmbientLight(m_AmbientTint);
     context.SetAmbientIntensity(m_Light.AmbientIntensity * scale);
     context.PointLight(Onyx::PointLightParameters<D3>{.Position = f32v3{0.f},

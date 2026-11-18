@@ -27,10 +27,10 @@ void FlyCamera::Update(const CameraFrame &frame)
         if (m_LastCursor)
             look = (cursor - *m_LastCursor) * params.MouseRadiansPerPixel;
         m_LastCursor = cursor;
-        roll = KeyAxis(window, Onyx::Key_Q, Onyx::Key_E) * params.FlyRollSpeed * deltaTime;
-        input =
-            f32v3{KeyAxis(window, Onyx::Key_D, Onyx::Key_A), KeyAxis(window, Onyx::Key_Space, Onyx::Key_LeftControl),
-                  KeyAxis(window, Onyx::Key_S, Onyx::Key_W)};
+        roll = KeyAxis(window, Graph::Key_Q, Graph::Key_E) * params.FlyRollSpeed * deltaTime;
+        input = f32v3{KeyAxis(window, Graph::Key_D, Graph::Key_A),
+                      KeyAxis(window, Graph::Key_Space, Graph::Key_LeftControl),
+                      KeyAxis(window, Graph::Key_S, Graph::Key_W)};
     }
     else
         m_LastCursor = TKit::Optional<f32v2>::None();

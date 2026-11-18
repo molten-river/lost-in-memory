@@ -50,7 +50,7 @@ void OrbitCamera::Update(const CameraFrame &frame)
         return;
     }
 
-    if (window.IsMousePressed(Onyx::Mouse_ButtonLeft))
+    if (window.IsMousePressed(Graph::Mouse_ButtonLeft))
     {
         const f32v2 cursor = window.GetMousePosition();
         if (m_LastCursor)
@@ -64,7 +64,7 @@ void OrbitCamera::Update(const CameraFrame &frame)
     else
         m_LastCursor = TKit::Optional<f32v2>::None();
 
-    const f32 zoom = KeyAxis(window, Onyx::Key_S, Onyx::Key_W) * params.OrbitSpeed * frame.DeltaTime;
+    const f32 zoom = KeyAxis(window, Graph::Key_S, Graph::Key_W) * params.OrbitSpeed * frame.DeltaTime;
     m_Distance = TKit::Math::Clamp(m_Distance * TKit::Math::Power(DISTANCE_DOUBLING, zoom), MIN_DISTANCE, MAX_DISTANCE);
 }
 
