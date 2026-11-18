@@ -67,7 +67,7 @@ constexpr TKit::FixedArray<TKit::StringView, 2> BUTTON_LABELS{"SAME BYTES", "NEW
 template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKit::StringView name)
 {
     bool found = false;
-    ForEachMemberFieldConstexpr<Params>([&](const auto &field) {
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if constexpr (TKit::Reflect<Type>::Implemented)
             found = found || TKit::StringView{field.Name} == name;

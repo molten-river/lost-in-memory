@@ -51,7 +51,7 @@ constexpr TKit::FixedArray<ModeName, 2> MODE_NAMES{{
 template <typename Params> [[nodiscard]] constexpr bool IsStructMember(const TKit::StringView name)
 {
     bool found = false;
-    ForEachMemberFieldConstexpr<Params>([&](const auto &field) {
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if constexpr (ReflectedStruct<Type>)
             found = found || TKit::StringView{field.Name} == name;

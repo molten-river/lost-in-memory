@@ -75,7 +75,7 @@ template <typename Params> [[nodiscard]] constexpr bool IsSchemaSound()
     u32 leaves = 0;
     u32 enumLeaves = 0;
     bool sound = true;
-    ForEachMemberFieldConstexpr<Params>([&](const auto &field) {
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &field) {
         using Type = TKIT_REFLECT_FIELD_TYPE(field);
         if constexpr (ReflectedStruct<Type>)
             sound = sound && IsSchemaSound<Type>();

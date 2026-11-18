@@ -95,7 +95,7 @@ template <typename Params>
                                              const TKit::StringView current)
 {
     bool found = false;
-    ForEachMemberFieldConstexpr<Params>([&](const auto &member) {
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &member) {
         using Type = TKIT_REFLECT_FIELD_TYPE(member);
         if constexpr (ReflectedStruct<Type>)
             found = found || IsLeafReflected<Type>(section, field, member.Name);
@@ -108,7 +108,7 @@ template <typename Params>
 template <typename Params> [[nodiscard]] constexpr bool IsSectionReflected(const TKit::StringView section)
 {
     bool found = false;
-    ForEachMemberFieldConstexpr<Params>([&](const auto &member) {
+    TKit::Reflect<Params>::ForEachMemberField([&](const auto &member) {
         using Type = TKIT_REFLECT_FIELD_TYPE(member);
         if constexpr (ReflectedStruct<Type>)
             found = found || section == TKit::StringView{member.Name} || IsSectionReflected<Type>(section);
