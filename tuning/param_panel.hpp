@@ -34,7 +34,7 @@ class ParamPanel
     ParamPanel(Onyx::Window &window, FontLibrary &fonts);
 
     /// False-y work when opacity is zero or the window is offscreen; call End regardless, which still flushes.
-    [[nodiscard]] bool Begin(const UiTheme &theme, f32 textSize, f32 opacity);
+    [[nodiscard]] bool Begin(const UiTheme &theme, f32 opacity);
     void Header(TKit::StringView title, TKit::Span<const TKit::StringView> lines, TKit::StringView caption);
     [[nodiscard]] bool CornerButton(TKit::StringView label);
     void BeginTabs();
@@ -57,7 +57,7 @@ class ParamPanel
         u32 Count;
     };
 
-    void ApplyTheme(const UiTheme &theme, f32 textSize, f32 screenHeight, f32 alpha);
+    void ApplyTheme(const UiTheme &theme, f32 alpha);
 
     [[nodiscard]] static Label ToLabel(TKit::StringView name, TKit::StringView prefix = {});
     static void DrawLeaf(Onyx::Overlay &ui, const Label &label, bool &enabled);
@@ -80,7 +80,6 @@ class ParamPanel
 
     Onyx::Resource m_Font;
     Onyx::Overlay *m_Overlay;
-    Onyx::OverlayStyleVariables m_Variables;
     Onyx::Color m_DimText{};
     TKit::Optional<f32v2> m_Size{};
     f32 m_ScrollHeight = 0.f;

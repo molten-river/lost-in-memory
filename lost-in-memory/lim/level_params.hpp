@@ -65,22 +65,15 @@ struct LookFeelParams
     PlayerParams Player;
     LightParams Light;
     f32 FadeSeconds = 0.5f;
-    f32 TextSize = 16.f;
 };
 
 template <> struct ParamSchema<LookFeelParams>
 {
-    static constexpr TKit::FixedArray<ParamSpec<LookFeelParams>, 2> FIELDS{{
+    static constexpr TKit::FixedArray<ParamSpec<LookFeelParams>, 1> FIELDS{{
         {.Member = &LookFeelParams::FadeSeconds,
          .Hint = "Duration of each fade in and out",
          .Flags = ParamSpecFlag_Min,
          .Min = 0.01f},
-        {.Member = &LookFeelParams::TextSize,
-         .Hint = "Panel text height at 1080 lines, scaled with the screen",
-         .Flags = DRAGGED_BOUNDS,
-         .Min = 10.f,
-         .Max = 28.f,
-         .Drag = TEXT_POINTS},
     }};
 };
 

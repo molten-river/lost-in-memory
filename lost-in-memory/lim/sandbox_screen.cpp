@@ -99,9 +99,7 @@ SandboxScreen::Action SandboxScreen::Draw(LevelParams &params, ShapeKitParams &k
                                           const Title title, const u64 address, const f32 opacity)
 {
     const UiTheme theme = ToUiTheme(params.LookFeel.Colors);
-    const Action action = m_Panel.Begin(theme, params.LookFeel.TextSize, opacity)
-                              ? DrawPanel(params, kit, mode, title, address)
-                              : Action::None;
+    const Action action = m_Panel.Begin(theme, opacity) ? DrawPanel(params, kit, mode, title, address) : Action::None;
     m_Panel.End();
     return action;
 }

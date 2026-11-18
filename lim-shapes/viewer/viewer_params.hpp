@@ -49,14 +49,13 @@ struct ViewerLook
     ViewerPalette Colors;
     f32 AmbientIntensity = 0.35f;
     f32 LightIntensity = 3.f;
-    f32 TextSize = 16.f;
 };
 
 template <> struct ParamSchema<ViewerLook>
 {
     static constexpr DragStyle LIGHT_STRENGTH{0.02f, TWO_DECIMALS_FORMAT};
 
-    static constexpr TKit::FixedArray<ParamSpec<ViewerLook>, 3> FIELDS{{
+    static constexpr TKit::FixedArray<ParamSpec<ViewerLook>, 2> FIELDS{{
         {.Member = &ViewerLook::AmbientIntensity,
          .Hint = "Strength of the ambient light; Onyx clamps it at 1",
          .Flags = DRAGGED_BOUNDS,
@@ -69,12 +68,6 @@ template <> struct ParamSchema<ViewerLook>
          .Min = 0.f,
          .Max = 20.f,
          .Drag = LIGHT_STRENGTH},
-        {.Member = &ViewerLook::TextSize,
-         .Hint = "Panel and HUD text height at 1080 lines, scaled with the window",
-         .Flags = DRAGGED_BOUNDS,
-         .Min = 10.f,
-         .Max = 28.f,
-         .Drag = TEXT_POINTS},
     }};
 };
 

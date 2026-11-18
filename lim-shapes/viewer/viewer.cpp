@@ -390,7 +390,7 @@ TKit::Optional<Viewer::Rebake> Viewer::DrawPanel()
                                                                                       Rebake::NewRegion};
 
     TKit::Optional<Rebake> requested{};
-    if (m_Panel.Begin(ToUiTheme(m_Params.Look.Colors), m_Params.Look.TextSize, 1.f))
+    if (m_Panel.Begin(ToUiTheme(m_Params.Look.Colors), 1.f))
     {
         const u32 record = m_Gallery.GetSelection();
         const FrameTimings::Line timings = m_Timings.Describe();

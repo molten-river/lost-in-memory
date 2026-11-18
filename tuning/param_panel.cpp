@@ -13,40 +13,8 @@ constexpr Onyx::OverlayWindowFlags WINDOW_FLAGS =
 constexpr Onyx::OverlayColorFlags COLOR_FLAGS =
     Onyx::OverlayColorFlag_NoAlpha | Onyx::OverlayColorFlag_NoColorMarkers | Onyx::OverlayColorFlag_NoTooltip;
 
-constexpr f32 TITLE_SCALE = 1.5f;
-constexpr f32 REFERENCE_SCREEN_HEIGHT = 1080.f;
-constexpr f32 BORDER_WIDTH = 1.f;
-constexpr f32 WINDOW_PADDING = 16.f;
-constexpr f32 WIDGET_WIDTH = 280.f;
 constexpr f32 HOVER_TINT = 0.25f;
 constexpr f32 PRESS_TINT = 0.5f;
-
-constexpr TKit::FixedArray<Onyx::OverlayStyleVariable, 26> SCALED_VARIABLES{Onyx::OverlayStyle_UnicodeSize,
-                                                                            Onyx::OverlayStyle_IndentWidth,
-                                                                            Onyx::OverlayStyle_ChildGap,
-                                                                            Onyx::OverlayStyle_TabPadding,
-                                                                            Onyx::OverlayStyle_TabGap,
-                                                                            Onyx::OverlayStyle_TabBarWidth,
-                                                                            Onyx::OverlayStyle_LineWidth,
-                                                                            Onyx::OverlayStyle_SeparatorTextOffset,
-                                                                            Onyx::OverlayStyle_WindowPadding,
-                                                                            Onyx::OverlayStyle_WindowBorderWidth,
-                                                                            Onyx::OverlayStyle_HeaderPadding,
-                                                                            Onyx::OverlayStyle_IconWidth,
-                                                                            Onyx::OverlayStyle_ContentAreaPadding,
-                                                                            Onyx::OverlayStyle_ScrollBarWidth,
-                                                                            Onyx::OverlayStyle_ScrollBarGap,
-                                                                            Onyx::OverlayStyle_ScrollSensitivity,
-                                                                            Onyx::OverlayStyle_WidgetSize,
-                                                                            Onyx::OverlayStyle_WidgetPadding,
-                                                                            Onyx::OverlayStyle_WidgetMinimumWidth,
-                                                                            Onyx::OverlayStyle_MenuPadding,
-                                                                            Onyx::OverlayStyle_DropDownHeightRegular,
-                                                                            Onyx::OverlayStyle_DropDownHeightSmall,
-                                                                            Onyx::OverlayStyle_TooltipPadding,
-                                                                            Onyx::OverlayStyle_ColorTooltipSize,
-                                                                            Onyx::OverlayStyle_ColorPickerSize,
-                                                                            Onyx::OverlayStyle_ColorPickerPreviewSize};
 
 constexpr f32 SCROLL_HEIGHT_SHARE = 0.55f;
 
@@ -87,27 +55,16 @@ constexpr f32 SCROLL_HEIGHT_SHARE = 0.55f;
     colors[Onyx::OverlayColor_ButtonPressed] = Mix(theme.Border, theme.TextDim, PRESS_TINT);
     return colors;
 }
-
-[[nodiscard]] Onyx::OverlayStyleVariables CreateVariables()
-{
-    Onyx::OverlayStyleVariables variables = Onyx::CreateDefaultOverlayVariables();
-    variables[Onyx::OverlayStyle_WindowBorderWidth] = BORDER_WIDTH;
-    variables[Onyx::OverlayStyle_LineWidth] = BORDER_WIDTH;
-    variables[Onyx::OverlayStyle_WindowPadding] = WINDOW_PADDING;
-    variables[Onyx::OverlayStyle_WidgetMinimumWidth] = WIDGET_WIDTH;
-    return variables;
-}
 } // namespace
 
 ParamPanel::ParamPanel(Onyx::Window &window, FontLibrary &fonts)
     : m_Font(fonts.Get()),
-      m_Overlay(window.CreateOverlay(Onyx::OverlaySpecs{
-          .Layout = {.RootAlignment = {Onyx::Alignment_Left, Onyx::Alignment_Top}, .Font = m_Font}})),
-      m_Variables(CreateVariables())
+      m_Overlay(window.CreateOverlay(
+          Onyx::OverlaySpecs{.Layout = {.RootAlignment = {Onyx::Alignment_Left, Onyx::Alignment_Top}, .Font = m_Font}}))
 {
 }
 
-bool ParamPanel::Begin(const UiTheme &theme, const f32 textSize, const f32 opacity)
+bool ParamPanel::Begin(const UiTheme &theme, const f32 opacity)
 {
     m_WindowOpen = false;
     if (opacity <= 0.f)
@@ -119,7 +76,7 @@ bool ParamPanel::Begin(const UiTheme &theme, const f32 textSize, const f32 opaci
     if (screen[1] <= 0.f)
         return false;
 
-    ApplyTheme(theme, textSize, screen[1], m_Size ? opacity : 0.f);
+    ApplyTheme(theme, m_Size ? opacity : 0.f);
     m_ScrollHeight = SCROLL_HEIGHT_SHARE * screen[1];
 
     const f32v2 size = m_Size ? *m_Size : f32v2{0.f};
@@ -140,9 +97,7 @@ void ParamPanel::Header(const TKit::StringView title, const TKit::Span<const TKi
                         const TKit::StringView caption)
 {
     Onyx::Overlay &ui = *m_Overlay;
-    ui.PushStyleVar(Onyx::OverlayStyle_FontSize, TITLE_SCALE * ui.GetStyle()[Onyx::OverlayStyle_FontSize]);
     ui.TextRaw(title);
-    ui.PopStyleVar();
 
     for (const TKit::StringView &line : lines)
         ui.TextRaw(line);
@@ -198,18 +153,11 @@ void ParamPanel::End()
     m_Overlay->Draw();
 }
 
-void ParamPanel::ApplyTheme(const UiTheme &theme, const f32 textSize, const f32 screenHeight, const f32 alpha)
+void ParamPanel::ApplyTheme(const UiTheme &theme, const f32 alpha)
 {
-    const f32 fontPixels = textSize * screenHeight / REFERENCE_SCREEN_HEIGHT;
-    const f32 scale = fontPixels / m_Variables[Onyx::OverlayStyle_FontSize];
-
     m_DimText = theme.TextDim;
     Onyx::OverlayStyle &style = m_Overlay->GetStyle();
     style.Colors = CreateColors(theme);
-    style.Variables = m_Variables;
-    style.Variables[Onyx::OverlayStyle_FontSize] = fontPixels;
-    for (const Onyx::OverlayStyleVariable variable : SCALED_VARIABLES)
-        style.Variables[variable] *= scale;
     style.Variables[Onyx::OverlayStyle_Alpha] = TKit::Math::Clamp(alpha, 0.f, 1.f);
 
     m_Overlay->GetMainNativeWindow()->Context->Font(m_Font);

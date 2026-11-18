@@ -17,7 +17,6 @@ template <typename Type>
 concept ReflectedStruct = TKit::Reflect<Type>::Implemented && !std::is_enum_v<Type>;
 
 inline constexpr const char *INTEGER_FORMAT = "{}";
-inline constexpr const char *WHOLE_FORMAT = "{:.0f}";
 inline constexpr const char *ONE_DECIMAL_FORMAT = "{:.1f}";
 inline constexpr const char *TWO_DECIMALS_FORMAT = "{:.2f}";
 inline constexpr const char *THREE_DECIMALS_FORMAT = "{:.3f}";
@@ -40,7 +39,6 @@ inline constexpr DragStyle GRID_SPACING{0.05f, ONE_DECIMAL_FORMAT};
 inline constexpr DragStyle GRID_DISTANCE{0.1f, ONE_DECIMAL_FORMAT};
 inline constexpr DragStyle TIME_MULTIPLIER{0.01f, TWO_DECIMALS_FORMAT};
 inline constexpr DragStyle PINCH_SHARE{0.001f, THREE_DECIMALS_FORMAT};
-inline constexpr DragStyle TEXT_POINTS{0.05f, WHOLE_FORMAT};
 
 using ParamSpecFlags = u8;
 enum ParamSpecFlagBit : ParamSpecFlags
